@@ -1,0 +1,14 @@
+{
+  "name": "wifi-i2c-ads1115-example",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ADS1115 ADC example for the wifi-i2c REST API",
+  "scripts": {
+    "scan": "node ads1115.js --scan",
+    "read": "node ads1115.js",
+    "read:ain0": "node ads1115.js --channel 0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
