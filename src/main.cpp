@@ -4,6 +4,8 @@
 #include <WebServer.h>
 #include <WiFi.h>
 
+#include "i2c_rest_api.h"
+
 #include <algorithm>
 #include <vector>
 
@@ -26,6 +28,7 @@ struct WifiNetwork {
 DNSServer dnsServer;
 WebServer webServer(80);
 bool provisioningActive = false;
+bool apiActive = false;
 
 String htmlEscape(const String &value) {
   String escaped;
@@ -309,6 +312,12 @@ void configurePortalRoutes() {
   webServer.onNotFound(redirectToPortal);
 }
 
+void startApiMode() {
+  apiActive = true;
+  I2cRestApi::begin(webServer);
+  webServer.begin();
+}
+
 void startProvisioningMode() {
   provisioningActive = true;
   Serial.println(F("[ap] Starting provisioning mode."));
@@ -340,12 +349,16 @@ void setup() {
     startProvisioningMode();
   } else {
     Serial.println(F("[boot] Normal WiFi station mode active."));
+    startApiMode();
   }
 }
 
 void loop() {
   if (provisioningActive) {
     dnsServer.processNextRequest();
+  }
+
+  if (provisioningActive || apiActive) {
     webServer.handleClient();
   }
 }
