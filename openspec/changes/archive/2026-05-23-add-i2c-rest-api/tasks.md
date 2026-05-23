@@ -41,6 +41,6 @@
 - [x] 6.2 Flash the controller and verify API mode starts after connecting to the configured WiFi.
 - [x] 6.3 Verify the I2C scan endpoint returns JSON and handles an empty bus.
 - [x] 6.4 Verify write, read, and write-read endpoint validation with malformed and out-of-range requests.
-- [ ] 6.5 Verify at least one real I2C transaction against attached hardware when hardware is available.
-- [ ] 6.6 Verify provisioning mode still exposes the captive portal and does not expose I2C API routes.
+- [x] 6.5 Verify at least one real I2C transaction against attached hardware when hardware is available.
+- [x] 6.6 Verify provisioning mode still exposes the captive portal and does not expose I2C API routes.
 - [x] 6.7 Run `gitnexus_detect_changes()` before committing implementation changes.
