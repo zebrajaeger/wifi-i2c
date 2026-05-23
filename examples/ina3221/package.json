@@ -1,0 +1,15 @@
+{
+  "name": "wifi-i2c-ina3221-example",
+  "version": "1.0.0",
+  "private": true,
+  "description": "INA3221 current and voltage monitor example for the wifi-i2c REST API",
+  "scripts": {
+    "scan": "node ina3221.js --scan",
+    "read": "node ina3221.js",
+    "read:all": "node ina3221.js --all",
+    "read:ch1": "node ina3221.js --channel 1"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
