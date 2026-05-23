@@ -41,3 +41,11 @@ This project is indexed by GitNexus as **wifi-i2c** (258 symbols, 374 relationsh
 | Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
 
 <!-- gitnexus:end -->
+
+## GitNexus workflow
+
+Before making any code changes, run:
+
+```bash
+npx gitnexus analyze
+````
