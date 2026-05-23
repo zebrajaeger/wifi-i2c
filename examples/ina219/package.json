@@ -1,0 +1,15 @@
+{
+  "name": "wifi-i2c-ina219-example",
+  "version": "1.0.0",
+  "private": true,
+  "description": "INA219 current, voltage, and power monitor example for the wifi-i2c REST API",
+  "scripts": {
+    "scan": "node ina219.js --scan",
+    "read": "node ina219.js",
+    "read:calibrated": "node ina219.js --calibrate",
+    "config": "node ina219.js --config"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
