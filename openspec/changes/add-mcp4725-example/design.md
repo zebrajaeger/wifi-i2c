@@ -11,11 +11,11 @@ The requested example should live under `examples/mcp4425/` and demonstrate MCP4
 - Explain wiring assumptions and environment-specific placeholders without requiring firmware changes.
 - Show how to scan the bus and identify a likely MCP4725 address.
 - Show how to write 12-bit DAC values using the existing `/api/i2c/write` endpoint.
-- Include copyable PowerShell commands that match the current REST API.
+- Include copyable PowerShell commands and a runnable Node.js example that match the current REST API.
 
 **Non-Goals:**
 - No changes to firmware code or REST endpoints.
-- No new host-side dependency or generated binary artifact.
+- No third-party npm dependency or generated binary artifact.
 - No exhaustive MCP4725 driver library.
 - No assumption that every setup uses the same I2C address, VCC, or output voltage range.
 
@@ -25,9 +25,9 @@ The requested example should live under `examples/mcp4425/` and demonstrate MCP4
   - Rationale: The current repository documentation is Markdown-based and the example is mainly instructional.
   - Alternative considered: A script-only example. That would be less readable for users learning the REST payload format.
 
-- Include optional command snippets rather than a required automation script.
-  - Rationale: PowerShell examples are immediately usable on the current Windows workflow and mirror the README.
-  - Alternative considered: Python examples. That would add a language/runtime expectation not otherwise required by the project.
+- Include optional command snippets and a small Node.js CLI rather than a larger client library.
+  - Rationale: PowerShell examples are immediately usable on the current Windows workflow and mirror the README, while a Node.js file with package scripts is directly testable without adding third-party dependencies.
+  - Alternative considered: Python examples. That would add another language/runtime expectation not otherwise requested for this project.
 
 - Document MCP4725 fast-mode DAC writes through `/api/i2c/write`.
   - Rationale: The existing API writes arbitrary byte arrays, which is enough to demonstrate setting the DAC output.

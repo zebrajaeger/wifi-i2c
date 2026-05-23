@@ -28,6 +28,13 @@ The MCP4725 example SHALL show how to write MCP4725 DAC output values through th
 - **WHEN** a user wants to set an MCP4725 output value
 - **THEN** the example includes a `POST /api/i2c/write` request with the bytes needed for a 12-bit MCP4725 DAC value
 
+### Requirement: Example includes runnable Node.js usage
+The MCP4725 example SHALL include a runnable Node.js file and package script support for scanning the bus and writing an MCP4725 DAC value through the REST API.
+
+#### Scenario: User automates DAC writes from Node.js
+- **WHEN** a user wants to drive the MCP4725 from a Node.js script
+- **THEN** the example provides an executable `mcp4725.js`, a `package.json`, and instructions for scan and write commands
+
 ### Requirement: Example does not require firmware changes
 The MCP4725 example SHALL use the existing generic I2C REST API without requiring new firmware routes or build configuration changes.
 

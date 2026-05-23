@@ -1,0 +1,14 @@
+{
+  "name": "wifi-i2c-mcp4725-example",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MCP4725 DAC example for the wifi-i2c REST API",
+  "scripts": {
+    "scan": "node mcp4725.js --scan",
+    "write": "node mcp4725.js",
+    "midscale": "node mcp4725.js --value 2048"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
