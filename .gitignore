@@ -1,5 +1,14 @@
+# PIO
 .pio
-.gitnexus
+
+# Gitnexus
+.gitnexus/*
+!.gitnexus/wiki/
+!.gitnexus/wiki/**
+
+# Agents
 .claude
 CLAUDE.md
+
+# IDE
 .vscode

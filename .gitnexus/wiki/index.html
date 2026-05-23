@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>wifi-i2c — Wiki</title>
+<script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<style>
+
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#ffffff;--sidebar-bg:#f8f9fb;--border:#e5e7eb;
+  --text:#1e293b;--text-muted:#64748b;--primary:#2563eb;
+  --primary-soft:#eff6ff;--hover:#f1f5f9;--code-bg:#f1f5f9;
+  --radius:8px;--shadow:0 1px 3px rgba(0,0,0,.08);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  line-height:1.65;color:var(--text);background:var(--bg)}
+
+.layout{display:flex;min-height:100vh}
+.sidebar{width:280px;background:var(--sidebar-bg);border-right:1px solid var(--border);
+  position:fixed;top:0;left:0;bottom:0;overflow-y:auto;padding:24px 16px;
+  display:flex;flex-direction:column;z-index:10}
+.content{margin-left:280px;flex:1;padding:48px 64px;max-width:960px}
+
+.sidebar-header{margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.sidebar-title{font-size:16px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px}
+.sidebar-title svg{flex-shrink:0}
+.sidebar-meta{font-size:11px;color:var(--text-muted);margin-top:6px}
+.nav-section{margin-bottom:2px}
+.nav-item{display:block;padding:7px 12px;border-radius:var(--radius);cursor:pointer;
+  font-size:13px;color:var(--text);text-decoration:none;transition:all .15s;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav-item:hover{background:var(--hover)}
+.nav-item.active{background:var(--primary-soft);color:var(--primary);font-weight:600}
+.nav-item.overview{font-weight:600;margin-bottom:4px}
+.nav-children{padding-left:14px;border-left:1px solid var(--border);margin-left:12px}
+.nav-group-label{font-size:11px;font-weight:600;color:var(--text-muted);
+  text-transform:uppercase;letter-spacing:.5px;padding:12px 12px 4px;user-select:none}
+.sidebar-footer{margin-top:auto;padding-top:16px;border-top:1px solid var(--border);
+  font-size:11px;color:var(--text-muted);text-align:center}
+
+.content h1{font-size:28px;font-weight:700;margin-bottom:8px;line-height:1.3}
+.content h2{font-size:22px;font-weight:600;margin:32px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.content h3{font-size:17px;font-weight:600;margin:24px 0 8px}
+.content h4{font-size:15px;font-weight:600;margin:20px 0 6px}
+.content p{margin:12px 0}
+.content ul,.content ol{margin:12px 0 12px 24px}
+.content li{margin:4px 0}
+.content a{color:var(--primary);text-decoration:none}
+.content a:hover{text-decoration:underline}
+.content blockquote{border-left:3px solid var(--primary);padding:8px 16px;margin:16px 0;
+  background:var(--primary-soft);border-radius:0 var(--radius) var(--radius) 0;
+  color:var(--text-muted);font-size:14px}
+.content code{font-family:'SF Mono',Consolas,'Courier New',monospace;font-size:13px;
+  background:var(--code-bg);padding:2px 6px;border-radius:4px}
+.content pre{background:#1e293b;color:#e2e8f0;border-radius:var(--radius);padding:16px;
+  overflow-x:auto;margin:16px 0}
+.content pre code{background:none;padding:0;font-size:13px;line-height:1.6;color:inherit}
+.content table{border-collapse:collapse;width:100%;margin:16px 0}
+.content th,.content td{border:1px solid var(--border);padding:8px 12px;text-align:left;font-size:14px}
+.content th{background:var(--sidebar-bg);font-weight:600}
+.content img{max-width:100%;border-radius:var(--radius)}
+.content hr{border:none;border-top:1px solid var(--border);margin:32px 0}
+.content .mermaid{margin:20px 0;text-align:center}
+
+.menu-toggle{display:none;position:fixed;top:12px;left:12px;z-index:20;
+  background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);
+  padding:8px 12px;cursor:pointer;font-size:18px;box-shadow:var(--shadow)}
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%);transition:transform .2s}
+  .sidebar.open{transform:translateX(0);box-shadow:2px 0 12px rgba(0,0,0,.1)}
+  .content{margin-left:0;padding:24px 20px;padding-top:56px}
+  .menu-toggle{display:block}
+}
+.empty-state{text-align:center;padding:80px 20px;color:var(--text-muted)}
+.empty-state h2{font-size:20px;margin-bottom:8px;border:none}
+
+</style>
+</head>
+<body>
+<button class="menu-toggle" id="menu-toggle" aria-label="Toggle menu">&#9776;</button>
+<div class="layout">
+<nav class="sidebar" id="sidebar">
+<div class="sidebar-header">
+<div class="sidebar-title">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+wifi-i2c
+</div>
+<div class="sidebar-meta" id="meta-info"></div>
+</div>
+<div id="nav-tree"></div>
+<div class="sidebar-footer">Generated by GitNexus</div>
+</nav>
+<main class="content" id="content">
+<div class="empty-state"><h2>Loading…</h2></div>
+</main>
+</div>
+<script>
+var PAGES = {"main-application":"# Main Application\n\n# Main Application Module Documentation\n\n## Overview\n\nThe Main Application module is responsible for managing WiFi connectivity and providing a web-based user interface for configuring WiFi settings on an ESP32 device. It handles both the connection to a configured WiFi network and the provisioning of new credentials through a captive portal when no valid credentials are found.\n\n## Key Components\n\n### Constants\n\n- **kApSsid**: The SSID of the access point created for provisioning.\n- **kPreferencesNamespace**: The namespace used for storing WiFi credentials in the device's preferences.\n- **kSsidKey** and **kPasswordKey**: Keys used to store and retrieve the SSID and password from preferences.\n- **kWifiConnectTimeoutMs**: Timeout duration for connecting to a WiFi network.\n- **kApIp**, **kApGateway**, **kApSubnet**: Configuration for the access point's IP address, gateway, and subnet mask.\n\n### Structures\n\n- **WifiNetwork**: A structure representing a WiFi network, containing:\n  - `ssid`: The SSID of the network.\n  - `rssi`: The Received Signal Strength Indicator.\n  - `encryptionType`: The type of encryption used by the network.\n\n### Global Variables\n\n- **dnsServer**: An instance of `DNSServer` for handling DNS requests.\n- **webServer**: An instance of `WebServer` for handling HTTP requests.\n- **provisioningActive**: A boolean flag indicating whether the device is in provisioning mode.\n\n## Functions\n\n### `setup()`\n\nThe entry point for the application. It initializes the serial communication, attempts to connect to a configured WiFi network, and starts provisioning mode if no valid credentials are found.\n\n### `loop()`\n\nHandles the main application loop. If provisioning is active, it processes DNS requests and handles incoming HTTP client requests.\n\n### WiFi Management Functions\n\n- **`loadCredentials(String &ssid, String &password)`**: Loads saved WiFi credentials from preferences. Returns `true` if credentials are found, otherwise `false`.\n  \n- **`saveCredentials(const String &ssid, const String &password)`**: Saves the provided SSID and password to preferences. Returns `true` if the SSID was successfully saved.\n\n- **`connectToConfiguredWifi()`**: Attempts to connect to the WiFi network using saved credentials. Returns `true` if connected, otherwise starts provisioning mode.\n\n- **`scanWifiNetworks()`**: Scans for available WiFi networks and returns a vector of `WifiNetwork` structures containing unique SSIDs, RSSI values, and encryption types.\n\n### Web Server Functions\n\n- **`configurePortalRoutes()`**: Sets up the routes for the web server, including handling requests for saving credentials and rebooting the device.\n\n- **`sendPortal(const String &message = \"\", const String &error = \"\", int statusCode = 200)`**: Sends the HTML content for the captive portal, including any messages or errors.\n\n- **`renderPortalContent(const String &message = \"\", const String &error = \"\")`**: Generates the HTML content for the portal, including a form for entering WiFi credentials and a list of available networks.\n\n- **`handleSaveCredentials()`**: Handles the POST request to save WiFi credentials. Validates the input and calls `saveCredentials()`.\n\n- **`handleReboot()`**: Handles the request to reboot the device, sending a confirmation message before restarting.\n\n### Utility Functions\n\n- **`htmlEscape(const String &value)`**: Escapes HTML special characters in a string to prevent XSS attacks.\n\n- **`authLabel(wifi_auth_mode_t encryptionType)`**: Returns a string representation of the encryption type (open or secured).\n\n### Provisioning Functions\n\n- **`startProvisioningMode()`**: Initializes the device in access point mode, starts the DNS server, and configures the web server for handling client requests.\n\n## Execution Flow\n\nThe execution flow begins in the `setup()` function, which attempts to connect to a configured WiFi network. If the connection fails, it invokes `startProvisioningMode()`, which sets up the access point and web server. The web server listens for incoming requests, allowing users to save new WiFi credentials or reboot the device.\n\n```mermaid\ngraph TD;\n    A[setup] -->|connects| B[connectToConfiguredWifi]\n    B -->|success| C[Normal WiFi mode]\n    B -->|failure| D[startProvisioningMode]\n    D --> E[configurePortalRoutes]\n    E --> F[sendPortal]\n    F --> G[renderPortalContent]\n    G --> H[scanWifiNetworks]\n    G --> I[htmlEscape]\n    G --> J[authLabel]\n```\n\n## Conclusion\n\nThe Main Application module provides a comprehensive solution for managing WiFi connectivity and user interaction through a web interface. It is designed to be easily extendable, allowing developers to add new features or modify existing functionality as needed. Understanding the flow of data and the role of each function is crucial for effective contributions to this module.","other":"# Other\n\n# Other Module Documentation\n\n## Overview\n\nThe **Other** module serves as a placeholder for miscellaneous functionalities that do not fit into the primary categories of the codebase. It is designed to encapsulate utility functions, configurations, or any other components that may be required for the overall operation of the project but do not belong to a specific module.\n\n## Purpose\n\nThe primary purpose of the Other module is to provide a flexible space for developers to add functionalities that are not directly related to the main features of the application. This can include helper functions, configuration settings, or any experimental code that may be useful for development or testing.\n\n## Key Components\n\n### Configuration File\n\nThe `platformio.ini` file is a critical component of the Other module. It defines the environment settings for the ESP32 development board, including:\n\n- **Platform**: Specifies the platform as `espressif32`.\n- **Board**: Indicates the board type as `esp32dev`.\n- **Framework**: Uses the Arduino framework for development.\n- **Library Dependencies**: Currently, there are no specific library dependencies defined, but this can be modified as needed.\n- **Upload and Monitor Settings**: Configures upload speed and monitor speed for serial communication.\n\n### GitNexus Integration\n\nThe Other module is integrated with GitNexus for code intelligence and impact analysis. This integration allows developers to:\n\n- Assess the impact of changes before making modifications.\n- Detect changes in the codebase to ensure that only expected symbols and execution flows are affected.\n- Query execution flows and context for better understanding of the code.\n\n### CLI Commands\n\nThe Other module leverages various CLI commands provided by GitNexus to facilitate development tasks. Key commands include:\n\n- `gitnexus_impact({target: \"symbolName\", direction: \"upstream\"})`: Analyze the impact of changes on the codebase.\n- `gitnexus_detect_changes()`: Verify that changes only affect expected symbols.\n- `gitnexus_query({query: \"concept\"})`: Explore unfamiliar code by querying execution flows.\n\n## Usage Guidelines\n\n### Best Practices\n\n- **Always perform impact analysis** before editing any symbol to understand the potential consequences of your changes.\n- **Run `gitnexus_detect_changes()`** before committing to ensure that your changes are scoped correctly.\n- **Avoid high-risk modifications** without proper analysis and understanding of the code.\n\n### Common Tasks\n\n| Task | Command |\n|------|---------|\n| Analyze impact of a change | `gitnexus_impact({target: \"symbolName\", direction: \"upstream\"})` |\n| Check for changes before commit | `gitnexus_detect_changes()` |\n| Query execution flows | `gitnexus_query({query: \"concept\"})` |\n\n## Architecture\n\nThe Other module does not have a complex architecture, as it primarily serves as a utility space. However, it is essential to understand how it fits into the overall project structure.\n\n```mermaid\ngraph TD;\n    A[Other Module] --> B[Configuration File]\n    A --> C[GitNexus Integration]\n    A --> D[CLI Commands]\n```\n\n## Conclusion\n\nThe Other module is a vital part of the codebase that allows for flexibility and experimentation. By following the guidelines and utilizing the tools provided, developers can effectively contribute to this module while maintaining the integrity of the overall project.","overview":"# wifi-i2c — Wiki\n\n# wifi-i2c\n\nWelcome to the **wifi-i2c** project! This repository contains firmware for an ESP32-based WiFi-to-I2C controller, designed to connect your I2C devices to a WiFi network seamlessly. The controller operates by exposing I2C master operations through a simple HTTP REST API, making it easy to interact with your devices over the network.\n\n## What It Does\n\nThe **wifi-i2c** firmware provides the following key functionalities:\n\n- **WiFi Connectivity**: Automatically connects to saved WiFi credentials on boot.\n- **Fallback Access Point**: If WiFi credentials are missing or unreachable, it starts a local provisioning access point.\n- **Captive Portal**: Users can select a nearby SSID, input their credentials, and reboot the device through a user-friendly interface.\n- **I2C REST API**: After successfully connecting to WiFi, the firmware serves an API that supports I2C operations such as scan, write, read, and write-then-read transactions.\n\n## Architecture Overview\n\nThe architecture of the **wifi-i2c** project is designed to facilitate easy interaction between the WiFi provisioning and I2C functionalities. The main components include the **Main Application** module, which manages the overall operation, and the **WiFi Provisioning** module, which handles the connection setup. The **Other** module provides additional utility functions as needed.\n\n```mermaid\ngraph TD;\n    A[Main Application] -->|Manages| B[WiFi Provisioning]\n    A -->|Serves| C[I2C REST API]\n    B -->|Provides| D[Captive Portal]\n    C -->|Handles| E[I2C Operations]\n    D -->|Connects to| F[WiFi Network]\n    F -->|Saves| G[WiFi Credentials]\n    E -->|Interacts with| H[I2C Devices]\n    A -->|Utilizes| I[Other Module]\n```\n\n## Getting Started\n\nTo set up the **wifi-i2c** firmware, ensure you have the following:\n\n- **Board Target**: ESP32 Dev Module (`esp32dev`)\n- **Framework**: Arduino for ESP32\n- **Build System**: PlatformIO\n\n### Basic Setup Instructions\n\n1. Clone the repository to your local machine.\n2. Open the project in PlatformIO.\n3. Configure your WiFi credentials in the appropriate section of the code.\n4. Build and upload the firmware to your ESP32 device.\n\nFor detailed information on each module, you can explore the following:\n\n- [WiFi Provisioning](wifi-provisioning.md): Learn how to set up and manage WiFi connections.\n- [Main Application](main-application.md): Understand the core functionalities and operations of the application.\n- [Other](other.md): Discover additional utility functions and configurations.\n\nWe hope you find this project useful and easy to work with. Happy coding!","wifi-provisioning":"# WiFi Provisioning\n\n# WiFi Provisioning Module\n\n## Overview\n\nThe WiFi Provisioning module is designed to facilitate the connection of devices to WiFi networks through a captive portal. This module allows users to input their WiFi credentials in a user-friendly interface, enabling seamless connectivity for IoT devices and other network-enabled applications.\n\n## Purpose\n\nThe primary purpose of the WiFi Provisioning module is to simplify the process of connecting devices to WiFi networks. It provides a captive portal that users can access to enter their network credentials, which are then securely transmitted to the device for configuration.\n\n## Key Components\n\n### 1. Captive Portal\n\nThe captive portal is the user interface that prompts users to enter their WiFi credentials. It is typically hosted on the device itself and is accessible via a web browser. The portal includes:\n\n- **Input Fields**: For SSID and password entry.\n- **Submit Button**: To send the credentials to the device.\n- **Feedback Messages**: To inform users of successful or failed attempts to connect.\n\n### 2. Credential Handling\n\nOnce the user submits their WiFi credentials, the module handles the following:\n\n- **Validation**: Ensures that the SSID and password meet the required criteria (e.g., length, character set).\n- **Storage**: Securely stores the credentials in the device's memory for future use.\n- **Connection Attempt**: Initiates the connection process to the specified WiFi network.\n\n### 3. Network Connection Logic\n\nThe module includes logic to manage the connection to the WiFi network. This involves:\n\n- **Connecting**: Using the device's networking stack to attempt a connection with the provided credentials.\n- **Error Handling**: Managing connection failures and providing feedback to the user through the captive portal.\n\n## How It Works\n\n1. **Device Initialization**: When the device starts, it enters a provisioning mode where it sets up the captive portal.\n2. **User Interaction**: Users connect to the device's WiFi network and are redirected to the captive portal.\n3. **Credential Submission**: Users enter their SSID and password, which are sent to the device upon submission.\n4. **Connection Process**: The module validates the credentials, attempts to connect to the specified network, and provides feedback to the user.\n\n## Integration with the Codebase\n\nThe WiFi Provisioning module interacts with the following components of the codebase:\n\n- **Networking Stack**: Utilizes the device's networking capabilities to establish connections.\n- **User Interface Framework**: Integrates with the UI framework to render the captive portal and handle user input.\n- **Configuration Management**: Works with the configuration management system to store and retrieve WiFi credentials.\n\n### Execution Flow\n\nAlthough there are no explicit execution flows detected for this module, the general flow can be summarized as follows:\n\n```mermaid\ngraph TD;\n    A[Device Initialization] --> B[Start Captive Portal]\n    B --> C[User Connects to Device]\n    C --> D[Display Credential Form]\n    D --> E[User Submits Credentials]\n    E --> F[Validate Credentials]\n    F --> G[Attempt Connection]\n    G --> H[Connection Successful?]\n    H -->|Yes| I[Store Credentials]\n    H -->|No| J[Display Error Message]\n```\n\n## Conclusion\n\nThe WiFi Provisioning module is a critical component for enabling easy and secure connectivity for devices. By providing a user-friendly captive portal and robust credential handling, it ensures that users can quickly connect their devices to WiFi networks with minimal hassle. Developers contributing to this module should focus on enhancing the user experience, improving validation mechanisms, and ensuring secure storage of credentials."};
+var TREE = [{"name":"WiFi Provisioning","slug":"wifi-provisioning","files":["openspec/changes/add-wifi-provisioning-captive-portal/design.md","openspec/changes/add-wifi-provisioning-captive-portal/proposal.md","openspec/changes/add-wifi-provisioning-captive-portal/specs/wifi-provisioning-captive-portal/spec.md","openspec/changes/add-wifi-provisioning-captive-portal/tasks.md"]},{"name":"Main Application","slug":"main-application","files":["src/main.cpp"]},{"name":"Other","slug":"other","files":["AGENTS.md","openspec/config.yaml","platformio.ini"]}];
+var META = {"fromCommit":"d25b5956a462b24dcfaa3a8f0d8c37a1ba4ea10c","generatedAt":"2026-05-23T21:01:20.961Z","model":"gpt-4o-mini","moduleFiles":{"WiFi Provisioning":["openspec/changes/add-wifi-provisioning-captive-portal/design.md","openspec/changes/add-wifi-provisioning-captive-portal/proposal.md","openspec/changes/add-wifi-provisioning-captive-portal/specs/wifi-provisioning-captive-portal/spec.md","openspec/changes/add-wifi-provisioning-captive-portal/tasks.md"],"Main Application":["src/main.cpp"],"Other":["AGENTS.md","openspec/config.yaml","platformio.ini"]},"moduleTree":[{"name":"WiFi Provisioning","slug":"wifi-provisioning","files":["openspec/changes/add-wifi-provisioning-captive-portal/design.md","openspec/changes/add-wifi-provisioning-captive-portal/proposal.md","openspec/changes/add-wifi-provisioning-captive-portal/specs/wifi-provisioning-captive-portal/spec.md","openspec/changes/add-wifi-provisioning-captive-portal/tasks.md"]},{"name":"Main Application","slug":"main-application","files":["src/main.cpp"]},{"name":"Other","slug":"other","files":["AGENTS.md","openspec/config.yaml","platformio.ini"]}]};
+
+(function() {
+  var activePage = 'overview';
+
+  document.addEventListener('DOMContentLoaded', function() {
+    mermaid.initialize({ startOnLoad: false, theme: 'neutral', securityLevel: 'loose' });
+    renderMeta();
+    renderNav();
+    document.getElementById('menu-toggle').addEventListener('click', function() {
+      document.getElementById('sidebar').classList.toggle('open');
+    });
+    if (location.hash && location.hash.length > 1) {
+      activePage = decodeURIComponent(location.hash.slice(1));
+    }
+    navigateTo(activePage);
+  });
+
+  function renderMeta() {
+    if (!META) return;
+    var el = document.getElementById('meta-info');
+    var parts = [];
+    if (META.generatedAt) {
+      parts.push(new Date(META.generatedAt).toLocaleDateString());
+    }
+    if (META.model) parts.push(META.model);
+    if (META.fromCommit) parts.push(META.fromCommit.slice(0, 8));
+    el.textContent = parts.join(' \u00b7 ');
+  }
+
+  function renderNav() {
+    var container = document.getElementById('nav-tree');
+    var html = '<div class="nav-section">';
+    html += '<a class="nav-item overview" data-page="overview" href="#overview">Overview</a>';
+    html += '</div>';
+    if (TREE.length > 0) {
+      html += '<div class="nav-group-label">Modules</div>';
+      html += buildNavTree(TREE);
+    }
+    container.innerHTML = html;
+    container.addEventListener('click', function(e) {
+      var target = e.target;
+      while (target && !target.dataset.page) { target = target.parentElement; }
+      if (target && target.dataset.page) {
+        e.preventDefault();
+        navigateTo(target.dataset.page);
+      }
+    });
+  }
+
+  function buildNavTree(nodes) {
+    var html = '';
+    for (var i = 0; i < nodes.length; i++) {
+      var node = nodes[i];
+      html += '<div class="nav-section">';
+      html += '<a class="nav-item" data-page="' + escH(node.slug) + '" href="#' + encodeURIComponent(node.slug) + '">' + escH(node.name) + '</a>';
+      if (node.children && node.children.length > 0) {
+        html += '<div class="nav-children">' + buildNavTree(node.children) + '</div>';
+      }
+      html += '</div>';
+    }
+    return html;
+  }
+
+  function escH(s) {
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function navigateTo(page) {
+    activePage = page;
+    location.hash = encodeURIComponent(page);
+
+    var items = document.querySelectorAll('.nav-item');
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].dataset.page === page) {
+        items[i].classList.add('active');
+      } else {
+        items[i].classList.remove('active');
+      }
+    }
+
+    var contentEl = document.getElementById('content');
+    var md = PAGES[page];
+
+    if (!md) {
+      contentEl.innerHTML = '<div class="empty-state"><h2>Page not found</h2><p>' + escH(page) + '.md does not exist.</p></div>';
+      return;
+    }
+
+    contentEl.innerHTML = marked.parse(md);
+
+    // Rewrite .md links to hash navigation
+    var links = contentEl.querySelectorAll('a[href]');
+    for (var i = 0; i < links.length; i++) {
+      var href = links[i].getAttribute('href');
+      if (href && href.endsWith('.md') && href.indexOf('://') === -1) {
+        var slug = href.replace(/\.md$/, '');
+        links[i].setAttribute('href', '#' + encodeURIComponent(slug));
+        (function(s) {
+          links[i].addEventListener('click', function(e) {
+            e.preventDefault();
+            navigateTo(s);
+          });
+        })(slug);
+      }
+    }
+
+    // Convert mermaid code blocks into mermaid divs
+    var mermaidBlocks = contentEl.querySelectorAll('pre code.language-mermaid');
+    for (var i = 0; i < mermaidBlocks.length; i++) {
+      var pre = mermaidBlocks[i].parentElement;
+      var div = document.createElement('div');
+      div.className = 'mermaid';
+      div.textContent = mermaidBlocks[i].textContent;
+      pre.parentNode.replaceChild(div, pre);
+    }
+    try { mermaid.run({ querySelector: '.mermaid' }); } catch(e) {}
+
+    window.scrollTo(0, 0);
+    document.getElementById('sidebar').classList.remove('open');
+  }
+})();
+
+</script>
+</body>
+</html>

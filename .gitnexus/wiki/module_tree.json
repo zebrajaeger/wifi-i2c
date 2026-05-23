@@ -1,0 +1,28 @@
+[
+  {
+    "name": "WiFi Provisioning",
+    "slug": "wifi-provisioning",
+    "files": [
+      "openspec/changes/add-wifi-provisioning-captive-portal/design.md",
+      "openspec/changes/add-wifi-provisioning-captive-portal/proposal.md",
+      "openspec/changes/add-wifi-provisioning-captive-portal/specs/wifi-provisioning-captive-portal/spec.md",
+      "openspec/changes/add-wifi-provisioning-captive-portal/tasks.md"
+    ]
+  },
+  {
+    "name": "Main Application",
+    "slug": "main-application",
+    "files": [
+      "src/main.cpp"
+    ]
+  },
+  {
+    "name": "Other",
+    "slug": "other",
+    "files": [
+      "AGENTS.md",
+      "openspec/config.yaml",
+      "platformio.ini"
+    ]
+  }
+]
