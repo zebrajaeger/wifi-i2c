@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <WebServer.h>
 
+#include "gpio_rest_api.h"
 #include "i2c_rest_api.h"
 #include "wifi_provisioning.h"
 
@@ -11,6 +12,7 @@ bool apiActive = false;
 void startApiMode() {
   apiActive = true;
   I2cRestApi::begin(webServer);
+  GpioRestApi::begin(webServer);
   webServer.begin();
 }
 }  // namespace

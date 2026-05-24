@@ -1,6 +1,6 @@
 # wifi-i2c
 
-Firmware for an ESP32-based WiFi-to-I2C controller. The controller joins a configured WiFi network and exposes I2C master operations through a small HTTP REST API. If WiFi credentials are missing or unreachable, it starts a provisioning access point with a captive portal.
+Firmware for an ESP32-based WiFi-to-I2C controller. The controller joins a configured WiFi network and exposes I2C master operations and selected GPIOs through a small HTTP REST API. If WiFi credentials are missing or unreachable, it starts a provisioning access point with a captive portal.
 
 ## What It Does
 
@@ -9,6 +9,8 @@ Firmware for an ESP32-based WiFi-to-I2C controller. The controller joins a confi
 - Serves a captive portal for selecting a nearby SSID, saving credentials, and rebooting.
 - Starts an I2C REST API after successful WiFi station connection.
 - Supports I2C scan, write, read, and write-then-read transactions.
+- Starts a GPIO REST API after successful WiFi station connection.
+- Supports listing safe GPIOs, configuring mode and pulls, reading inputs, and writing outputs.
 
 ## Hardware And Firmware
 
@@ -18,7 +20,7 @@ Firmware for an ESP32-based WiFi-to-I2C controller. The controller joins a confi
 - I2C role: ESP32 acts as I2C master
 - HTTP server port: `80`
 
-The concrete I2C wiring and attached devices depend on your hardware setup. The API uses 7-bit I2C addresses and validates addresses before touching the bus.
+The concrete I2C wiring, GPIO wiring, and attached devices depend on your hardware setup. The I2C API uses 7-bit I2C addresses and validates addresses before touching the bus. The GPIO API exposes only an allowlist of pins and rejects unsupported or reserved pins.
 
 ## Build, Flash, Monitor
 
@@ -46,7 +48,7 @@ The project currently uses `upload_speed = 1500000` and `monitor_speed = 115200`
 
 ### WiFi Station And API Mode
 
-On boot, the controller loads saved credentials from non-volatile preferences. If the configured WiFi is reachable within the connection timeout, the controller joins that network and starts the I2C REST API.
+On boot, the controller loads saved credentials from non-volatile preferences. If the configured WiFi is reachable within the connection timeout, the controller joins that network and starts the I2C and GPIO REST APIs.
 
 The serial log prints the assigned IP address. Use that IP as `<controller-ip>` in API requests:
 
@@ -145,16 +147,128 @@ Payload fields:
 - `prefix`: bytes written before the read
 - `length`: number of bytes to read after the prefix write
 
+## GPIO REST API
+
+The GPIO API is available only in WiFi station mode after a successful WiFi connection. Responses are JSON and include `ok: true` on success or `ok: false` with an `error` field on validation errors.
+
+GPIO access is intentionally limited to a safe allowlist. The API does not expose pins used for flash, boot strapping, UART, or the default I2C bus. Always call `GET /api/gpio` first and choose a pin listed as output-capable before driving external hardware.
+
+Supported modes:
+
+- `input`
+- `input_pullup`
+- `input_pulldown`
+- `output`
+- `output_open_drain`, when supported by the platform
+
+### List GPIOs
+
+List supported GPIOs with current runtime parameters and capability metadata:
+
+```powershell
+Invoke-RestMethod -Uri http://<controller-ip>/api/gpio
+```
+
+Example response excerpt:
+
+```json
+{
+  "ok": true,
+  "pins": [
+    {
+      "pin": 13,
+      "label": "safe_gpio",
+      "available": true,
+      "inputCapable": true,
+      "outputCapable": true,
+      "pullupCapable": true,
+      "pulldownCapable": true,
+      "mode": "unconfigured",
+      "pullup": false,
+      "pulldown": false,
+      "value": 0,
+      "lastOutputValue": null
+    }
+  ],
+  "count": 16
+}
+```
+
+### Read GPIO
+
+Read one supported GPIO:
+
+```powershell
+Invoke-RestMethod -Uri "http://<controller-ip>/api/gpio/read?pin=13"
+```
+
+If the pin has not been configured through REST yet, the controller automatically configures it as plain `input` without pull-up or pull-down before reading.
+
+### Configure GPIO
+
+Configure one supported GPIO. For an input with internal pull-up:
+
+```powershell
+Invoke-RestMethod `
+  -Uri http://<controller-ip>/api/gpio/configure `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"pin":13,"mode":"input_pullup"}'
+```
+
+Configure an output and set its initial value:
+
+```powershell
+Invoke-RestMethod `
+  -Uri http://<controller-ip>/api/gpio/configure `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"pin":13,"mode":"output","value":0}'
+```
+
+Payload fields:
+
+- `pin`: GPIO number from `GET /api/gpio`
+- `mode`: one of the supported mode strings
+- `value`: optional initial output value, `0` or `1`, used when configuring an output
+
+### Write GPIO
+
+Write a digital value to a pin that is already configured as output:
+
+```powershell
+Invoke-RestMethod `
+  -Uri http://<controller-ip>/api/gpio/write `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"pin":13,"value":1}'
+```
+
+Payload fields:
+
+- `pin`: GPIO number from `GET /api/gpio`
+- `value`: digital output value, `0` or `1`
+
+If the pin has not been configured through REST yet, the controller automatically configures it as plain `output` without pull-up or pull-down before writing. If the pin was explicitly configured as an input, writes are rejected until it is configured as output.
+
 ## Smoke Test
 
 1. Flash the firmware.
 2. If the controller starts `wifi-i2c-setup`, connect to it and save WiFi credentials through the portal.
 3. Reboot the controller.
 4. Watch the serial monitor for the assigned station IP.
-5. Call the scan endpoint:
+5. Call the I2C scan endpoint:
 
 ```powershell
 Invoke-RestMethod -Uri http://<controller-ip>/api/i2c/scan
 ```
 
 A successful response with `ok: true` confirms that the controller is in API mode and the I2C API is reachable. The returned device list depends on what is attached to the bus.
+
+6. Call the GPIO list endpoint:
+
+```powershell
+Invoke-RestMethod -Uri http://<controller-ip>/api/gpio
+```
+
+A successful response with `ok: true` and a `pins` array confirms that the GPIO API is reachable.

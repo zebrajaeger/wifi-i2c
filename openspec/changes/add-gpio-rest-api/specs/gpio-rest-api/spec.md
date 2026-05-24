@@ -36,6 +36,10 @@ The controller SHALL provide an endpoint that reads the digital value of a suppo
 - **WHEN** a client sends `GET /api/gpio/read?pin=<n>` for a supported readable GPIO
 - **THEN** the controller reads the pin and returns its digital value and current pin parameters
 
+#### Scenario: Client reads an unconfigured readable pin
+- **WHEN** a client sends `GET /api/gpio/read?pin=<n>` for a supported readable GPIO that has not been configured through REST
+- **THEN** the controller automatically configures the pin as plain `input` without pull-up or pull-down before returning the digital value and current pin parameters
+
 #### Scenario: Client reads an invalid pin
 - **WHEN** a client requests a missing, unsupported, or unreadable GPIO
 - **THEN** the controller rejects the request before touching hardware and returns a JSON error response
@@ -62,8 +66,12 @@ The controller SHALL provide an endpoint that writes a digital value to a suppor
 - **WHEN** a client sends `POST /api/gpio/write` with a supported output-configured pin and value `0` or `1`
 - **THEN** the controller writes the digital value and returns the updated pin parameters
 
-#### Scenario: Client writes a non-output pin
-- **WHEN** a client sends `POST /api/gpio/write` for a pin that is unsupported or not configured as output-capable
+#### Scenario: Client writes an unconfigured output-capable pin
+- **WHEN** a client sends `POST /api/gpio/write` with a supported output-capable GPIO that has not been configured through REST
+- **THEN** the controller automatically configures the pin as plain `output` without pull-up or pull-down, writes the requested value, and returns the updated pin parameters
+
+#### Scenario: Client writes a non-output-capable pin
+- **WHEN** a client sends `POST /api/gpio/write` for a pin that is unsupported or not output-capable
 - **THEN** the controller rejects the request and returns a JSON error response
 
 ### Requirement: API tracks runtime GPIO state

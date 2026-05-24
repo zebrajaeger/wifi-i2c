@@ -1,0 +1,15 @@
+{
+  "name": "wifi-i2c-gpio-example",
+  "version": "1.0.0",
+  "private": true,
+  "description": "GPIO REST API example for the wifi-i2c controller",
+  "scripts": {
+    "list": "node gpio.js list",
+    "read": "node gpio.js read",
+    "configure": "node gpio.js configure",
+    "write": "node gpio.js write"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -49,13 +49,17 @@ GPIOs have more board-safety constraints than I2C operations. Some ESP32 pins ar
 
 5. Keep writes separate from configuration.
 
-   `POST /api/gpio/write` only changes output value and requires the pin to already be configured as an output-capable mode. `POST /api/gpio/configure` may optionally accept an initial output value when switching to output mode. This avoids accidental direction changes from a write call.
+   `POST /api/gpio/write` changes output value and auto-configures an unconfigured output-capable pin as plain `output` with no pulls. If the pin was already configured as a non-output mode, the request is rejected. `POST /api/gpio/configure` may optionally accept an initial output value when switching to output mode. This avoids accidental direction changes after explicit configuration while keeping first-use output writes ergonomic.
 
-6. Use volatile runtime state.
+6. Auto-configure first reads and writes.
+
+   `GET /api/gpio/read?pin=<n>` auto-configures an unconfigured readable pin as plain `input` with no pulls. `POST /api/gpio/write` auto-configures an unconfigured output-capable pin as plain `output` with no pulls. Alternative considered: requiring explicit configure for every operation, but first-use auto-configuration makes simple REST use easier while still preserving pull-up/pull-down as explicit configuration choices.
+
+7. Use volatile runtime state.
 
    GPIO state is tracked in memory and initialized to safe defaults on boot. The API reports unknown/unconfigured pins as available but not actively configured until the user configures them. Alternative considered: storing GPIO config in preferences, but that can surprise users after reboot and should be a separate explicit feature.
 
-7. Document and demonstrate the API in repository-facing artifacts.
+8. Document and demonstrate the API in repository-facing artifacts.
 
    The root README should summarize the GPIO endpoints, payloads, and safety rules next to the existing I2C API documentation. A dedicated `examples/gpio/` folder should provide a runnable Node.js CLI so users can immediately list pins, configure a safe pin, read it, and write output values. Alternative considered: only documenting raw `Invoke-RestMethod` calls, but the existing examples have established a useful pattern for runnable Node.js examples.
 
