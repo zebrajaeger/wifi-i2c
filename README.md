@@ -185,6 +185,16 @@ Supported modes:
 - `output`
 - `output_open_drain`, when supported by the platform
 
+Pin-specific operations can use resource-style routes:
+
+- `GET /api/gpio/pin/<pin>/read`
+- `GET /api/gpio/pin/<pin>/adc`
+- `POST /api/gpio/pin/<pin>/configure`
+- `POST /api/gpio/pin/<pin>/write`
+- `POST /api/gpio/pin/<pin>/dac`
+
+The older operation endpoints such as `/api/gpio/read?pin=<pin>` and `/api/gpio/write` remain supported for compatibility.
+
 ### List GPIOs
 
 List supported GPIOs with current runtime parameters and capability metadata:
@@ -226,7 +236,7 @@ Example response excerpt:
 Read one supported GPIO:
 
 ```powershell
-Invoke-RestMethod -Uri "http://<controller-ip>/api/gpio/read?pin=13"
+Invoke-RestMethod -Uri "http://<controller-ip>/api/gpio/pin/13/read"
 ```
 
 If the pin has not been configured through REST yet, the controller automatically configures it as plain `input` without pull-up or pull-down before reading.
@@ -236,7 +246,7 @@ If the pin has not been configured through REST yet, the controller automaticall
 Read one supported ADC-capable GPIO:
 
 ```powershell
-Invoke-RestMethod -Uri "http://<controller-ip>/api/gpio/adc?pin=34"
+Invoke-RestMethod -Uri "http://<controller-ip>/api/gpio/pin/34/adc"
 ```
 
 Example response:
@@ -262,10 +272,10 @@ Write an 8-bit raw value to one supported DAC-capable GPIO:
 
 ```powershell
 Invoke-RestMethod `
-  -Uri http://<controller-ip>/api/gpio/dac `
+  -Uri http://<controller-ip>/api/gpio/pin/25/dac `
   -Method Post `
   -ContentType "application/json" `
-  -Body '{"pin":25,"value":128}'
+  -Body '{"value":128}'
 ```
 
 Example response:
@@ -289,7 +299,6 @@ Example response:
 
 Payload fields:
 
-- `pin`: GPIO number from `GET /api/gpio`, typically `25` or `26` on ESP32
 - `value`: raw DAC value, `0` through `255`
 
 Use `GET /api/gpio` first and choose a pin with `dacCapable: true`. For accurate or higher-resolution analog output, use an external DAC such as MCP4725.
@@ -300,25 +309,24 @@ Configure one supported GPIO. For an input with internal pull-up:
 
 ```powershell
 Invoke-RestMethod `
-  -Uri http://<controller-ip>/api/gpio/configure `
+  -Uri http://<controller-ip>/api/gpio/pin/13/configure `
   -Method Post `
   -ContentType "application/json" `
-  -Body '{"pin":13,"mode":"input_pullup"}'
+  -Body '{"mode":"input_pullup"}'
 ```
 
 Configure an output and set its initial value:
 
 ```powershell
 Invoke-RestMethod `
-  -Uri http://<controller-ip>/api/gpio/configure `
+  -Uri http://<controller-ip>/api/gpio/pin/13/configure `
   -Method Post `
   -ContentType "application/json" `
-  -Body '{"pin":13,"mode":"output","value":0}'
+  -Body '{"mode":"output","value":0}'
 ```
 
 Payload fields:
 
-- `pin`: GPIO number from `GET /api/gpio`
 - `mode`: one of the supported mode strings
 - `value`: optional initial output value, `0` or `1`, used when configuring an output
 
@@ -328,15 +336,14 @@ Write a digital value to a pin that is already configured as output:
 
 ```powershell
 Invoke-RestMethod `
-  -Uri http://<controller-ip>/api/gpio/write `
+  -Uri http://<controller-ip>/api/gpio/pin/13/write `
   -Method Post `
   -ContentType "application/json" `
-  -Body '{"pin":13,"value":1}'
+  -Body '{"value":1}'
 ```
 
 Payload fields:
 
-- `pin`: GPIO number from `GET /api/gpio`
 - `value`: digital output value, `0` or `1`
 
 If the pin has not been configured through REST yet, the controller automatically configures it as plain `output` without pull-up or pull-down before writing. If the pin was explicitly configured as an input, writes are rejected until it is configured as output.

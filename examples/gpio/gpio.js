@@ -15,6 +15,7 @@ Options:
   --pin <n>      GPIO number from GET /api/gpio.
   --mode <mode>  input, input_pullup, input_pulldown, output, output_open_drain.
   --value <n>    Digital output value 0|1, or DAC value 0..255.
+  --path-style   Use /api/gpio/pin/<pin>/<operation> for pin-specific requests.
   --help         Show this help.
 
 Examples:
@@ -23,6 +24,7 @@ Examples:
   node gpio.js write --host 192.168.178.51 --pin 13 --value 1
   node gpio.js read --host 192.168.178.51 --pin 13
   node gpio.js adc --host 192.168.178.51 --pin 34
+  node gpio.js adc --host 192.168.178.51 --pin 34 --path-style
   node gpio.js dac --host 192.168.178.51 --pin 25 --value 128
 `);
 }
@@ -34,6 +36,7 @@ function parseArgs(argv) {
     pin: undefined,
     mode: '',
     value: undefined,
+    pathStyle: false,
     help: false,
   };
 
@@ -65,6 +68,9 @@ function parseArgs(argv) {
         break;
       case '--value':
         options.value = Number(next());
+        break;
+      case '--path-style':
+        options.pathStyle = true;
         break;
       case '--help':
       case '-h':
@@ -123,6 +129,14 @@ async function postJson(host, path, body) {
   });
 }
 
+function gpioOperationPath(options, operation, queryPath) {
+  if (!options.pathStyle) {
+    return queryPath;
+  }
+
+  return `/api/gpio/pin/${options.pin}/${operation}`;
+}
+
 function printPins(response) {
   if (!Array.isArray(response.pins)) {
     console.log(JSON.stringify(response, null, 2));
@@ -163,23 +177,36 @@ async function main() {
     }
     case 'read': {
       requirePin(options);
-      const response = await requestJson(options.host, `/api/gpio/read?pin=${options.pin}`);
+      const response = await requestJson(
+        options.host,
+        gpioOperationPath(options, 'read', `/api/gpio/read?pin=${options.pin}`),
+      );
       console.log(JSON.stringify(response, null, 2));
       return;
     }
     case 'adc': {
       requirePin(options);
-      const response = await requestJson(options.host, `/api/gpio/adc?pin=${options.pin}`);
+      const response = await requestJson(
+        options.host,
+        gpioOperationPath(options, 'adc', `/api/gpio/adc?pin=${options.pin}`),
+      );
       console.log(JSON.stringify(response, null, 2));
       return;
     }
     case 'dac': {
       requirePin(options);
       requireDacValue(options);
-      const response = await postJson(options.host, '/api/gpio/dac', {
-        pin: options.pin,
+      const body = {
         value: options.value,
-      });
+      };
+      if (!options.pathStyle) {
+        body.pin = options.pin;
+      }
+      const response = await postJson(
+        options.host,
+        gpioOperationPath(options, 'dac', '/api/gpio/dac'),
+        body,
+      );
       console.log(JSON.stringify(response, null, 2));
       return;
     }
@@ -189,24 +216,37 @@ async function main() {
         throw new Error('Missing --mode <mode>');
       }
       const body = {
-        pin: options.pin,
         mode: options.mode,
       };
+      if (!options.pathStyle) {
+        body.pin = options.pin;
+      }
       if (options.value !== undefined) {
         requireValue(options);
         body.value = options.value;
       }
-      const response = await postJson(options.host, '/api/gpio/configure', body);
+      const response = await postJson(
+        options.host,
+        gpioOperationPath(options, 'configure', '/api/gpio/configure'),
+        body,
+      );
       console.log(JSON.stringify(response, null, 2));
       return;
     }
     case 'write': {
       requirePin(options);
       requireValue(options);
-      const response = await postJson(options.host, '/api/gpio/write', {
-        pin: options.pin,
+      const body = {
         value: options.value,
-      });
+      };
+      if (!options.pathStyle) {
+        body.pin = options.pin;
+      }
+      const response = await postJson(
+        options.host,
+        gpioOperationPath(options, 'write', '/api/gpio/write'),
+        body,
+      );
       console.log(JSON.stringify(response, null, 2));
       return;
     }

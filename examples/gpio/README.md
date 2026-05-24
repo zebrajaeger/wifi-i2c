@@ -41,12 +41,24 @@ npm run read -- --host <controller-ip> --pin 13
 
 If you read a supported pin before configuring it, the controller automatically configures it as plain `input` without pull-up or pull-down.
 
+Add `--path-style` to use routes such as `/api/gpio/pin/13/read` instead of the compatibility endpoints:
+
+```powershell
+npm run read -- --host <controller-ip> --pin 13 --path-style
+```
+
 ## Read An ADC Input
 
 Read an ADC-capable pin:
 
 ```powershell
 npm run adc -- --host <controller-ip> --pin 34
+```
+
+The path-style equivalent calls `/api/gpio/pin/34/adc`:
+
+```powershell
+npm run adc -- --host <controller-ip> --pin 34 --path-style
 ```
 
 ADC reads return a raw value and resolution metadata. When supported by the firmware platform, the response also includes `millivolts`.
@@ -57,6 +69,12 @@ Write an 8-bit raw DAC value to a DAC-capable pin:
 
 ```powershell
 npm run dac -- --host <controller-ip> --pin 25 --value 128
+```
+
+Use path-style routing when you want the pin in the URL:
+
+```powershell
+npm run dac -- --host <controller-ip> --pin 25 --value 128 --path-style
 ```
 
 The ESP32 internal DAC is available on GPIO25 and GPIO26. Values are raw 8-bit values from `0` through `255`; use an external DAC when you need higher resolution or better precision.
@@ -83,6 +101,13 @@ npm run write -- --host <controller-ip> --pin 13 --value 0
 
 If you write a supported output-capable pin before configuring it, the controller automatically configures it as plain `output` without pull-up or pull-down. If you already configured the pin as an input, configure it as output before writing.
 
+Path-style routing works for configure and write as well:
+
+```powershell
+npm run configure -- --host <controller-ip> --pin 13 --mode output --value 0 --path-style
+npm run write -- --host <controller-ip> --pin 13 --value 1 --path-style
+```
+
 You can also call the script directly:
 
 ```powershell
@@ -90,7 +115,7 @@ node .\gpio.js list --host <controller-ip>
 node .\gpio.js configure --host <controller-ip> --pin 13 --mode output --value 0
 node .\gpio.js write --host <controller-ip> --pin 13 --value 1
 node .\gpio.js read --host <controller-ip> --pin 13
-node .\gpio.js adc --host <controller-ip> --pin 34
+node .\gpio.js adc --host <controller-ip> --pin 34 --path-style
 node .\gpio.js dac --host <controller-ip> --pin 25 --value 128
 ```
 

@@ -142,9 +142,8 @@ const PinDefinition *findPin(uint8_t pin, size_t *index = nullptr) {
   return nullptr;
 }
 
-bool parsePin(JsonVariant value, const PinDefinition *&pin, size_t &index) {
-  long parsedPin = 0;
-  if (!parseIntegerLike(value, parsedPin) || parsedPin < 0 || parsedPin > 255) {
+bool resolvePin(long parsedPin, const PinDefinition *&pin, size_t &index) {
+  if (parsedPin < 0 || parsedPin > 255) {
     sendJsonError(400, F("invalid_pin"), F("pin must be a GPIO number"));
     return false;
   }
@@ -159,6 +158,16 @@ bool parsePin(JsonVariant value, const PinDefinition *&pin, size_t &index) {
   return true;
 }
 
+bool parsePin(JsonVariant value, const PinDefinition *&pin, size_t &index) {
+  long parsedPin = 0;
+  if (!parseIntegerLike(value, parsedPin)) {
+    sendJsonError(400, F("invalid_pin"), F("pin must be a GPIO number"));
+    return false;
+  }
+
+  return resolvePin(parsedPin, pin, index);
+}
+
 bool parsePinFromQuery(const PinDefinition *&pin, size_t &index) {
   if (!webServer->hasArg(F("pin"))) {
     sendJsonError(400, F("missing_pin"), F("pin query parameter is required"));
@@ -166,20 +175,22 @@ bool parsePinFromQuery(const PinDefinition *&pin, size_t &index) {
   }
 
   long parsedPin = 0;
-  if (!parseQueryInteger(webServer->arg(F("pin")), parsedPin) || parsedPin < 0 ||
-      parsedPin > 255) {
+  if (!parseQueryInteger(webServer->arg(F("pin")), parsedPin)) {
     sendJsonError(400, F("invalid_pin"), F("pin must be a GPIO number"));
     return false;
   }
 
-  pin = findPin(static_cast<uint8_t>(parsedPin), &index);
-  if (pin == nullptr) {
-    sendJsonError(400, F("unsupported_pin"),
-                  String(F("pin ")) + parsedPin + F(" is not available through REST"));
+  return resolvePin(parsedPin, pin, index);
+}
+
+bool parsePinFromPath(const String &value, const PinDefinition *&pin, size_t &index) {
+  long parsedPin = 0;
+  if (!parseQueryInteger(value, parsedPin)) {
+    sendJsonError(400, F("invalid_pin"), F("pin must be a GPIO number"));
     return false;
   }
 
-  return true;
+  return resolvePin(parsedPin, pin, index);
 }
 
 bool parseValue(JsonVariant value, int &parsedValue) {
@@ -337,14 +348,8 @@ void handleGpioList() {
   sendJsonDocument(200, response);
 }
 
-void handleGpioRead() {
-  const PinDefinition *pin = nullptr;
-  size_t index = 0;
-  if (!parsePinFromQuery(pin, index)) {
-    return;
-  }
-
-  if (!pin->input) {
+void performGpioRead(const PinDefinition &pin, size_t index) {
+  if (!pin.input) {
     sendJsonError(400, F("pin_not_readable"));
     return;
   }
@@ -352,20 +357,46 @@ void handleGpioRead() {
   PinState &state = pinStates[index];
   if (!state.configured) {
     Serial.print(F("[api] GPIO auto-configure pin "));
-    Serial.print(pin->pin);
+    Serial.print(pin.pin);
     Serial.println(F(" as input for read"));
-    if (!applyMode(*pin, state, "input", false, 0)) {
+    if (!applyMode(pin, state, "input", false, 0)) {
       return;
     }
   }
 
   Serial.print(F("[api] GPIO read pin "));
-  Serial.println(pin->pin);
+  Serial.println(pin.pin);
 
   DynamicJsonDocument response(512);
   response[F("ok")] = true;
   JsonObject pinObject = response.createNestedObject(F("gpio"));
-  addPinState(pinObject, *pin, state);
+  addPinState(pinObject, pin, state);
+  sendJsonDocument(200, response);
+}
+
+void handleGpioRead() {
+  const PinDefinition *pin = nullptr;
+  size_t index = 0;
+  if (!parsePinFromQuery(pin, index)) {
+    return;
+  }
+
+  performGpioRead(*pin, index);
+}
+
+void performGpioAdcRead(const PinDefinition &pin) {
+  if (!pin.adc) {
+    sendJsonError(400, F("pin_not_adc_capable"));
+    return;
+  }
+
+  Serial.print(F("[api] GPIO ADC read pin "));
+  Serial.println(pin.pin);
+
+  DynamicJsonDocument response(512);
+  response[F("ok")] = true;
+  JsonObject adcObject = response.createNestedObject(F("adc"));
+  addAdcReading(adcObject, pin);
   sendJsonDocument(200, response);
 }
 
@@ -377,19 +408,7 @@ void handleGpioAdcRead() {
   }
   (void)index;
 
-  if (!pin->adc) {
-    sendJsonError(400, F("pin_not_adc_capable"));
-    return;
-  }
-
-  Serial.print(F("[api] GPIO ADC read pin "));
-  Serial.println(pin->pin);
-
-  DynamicJsonDocument response(512);
-  response[F("ok")] = true;
-  JsonObject adcObject = response.createNestedObject(F("adc"));
-  addAdcReading(adcObject, *pin);
-  sendJsonDocument(200, response);
+  performGpioAdcRead(*pin);
 }
 
 void addDacResult(JsonObject target, const PinDefinition &pin, const PinState &state,
@@ -401,6 +420,31 @@ void addDacResult(JsonObject target, const PinDefinition &pin, const PinState &s
 
   JsonObject gpioObject = target.createNestedObject(F("gpio"));
   addPinState(gpioObject, pin, state);
+}
+
+void performGpioConfigure(const PinDefinition &pin, size_t index,
+                          DynamicJsonDocument &request) {
+  const char *mode = request[F("mode")] | "";
+  int initialValue = 0;
+  const bool hasInitialValue = !request[F("value")].isNull();
+  if (hasInitialValue && !parseValue(request[F("value")], initialValue)) {
+    return;
+  }
+
+  Serial.print(F("[api] GPIO configure pin "));
+  Serial.print(pin.pin);
+  Serial.print(F(" mode="));
+  Serial.println(mode);
+
+  if (!applyMode(pin, pinStates[index], mode, hasInitialValue, initialValue)) {
+    return;
+  }
+
+  DynamicJsonDocument response(512);
+  response[F("ok")] = true;
+  JsonObject pinObject = response.createNestedObject(F("gpio"));
+  addPinState(pinObject, pin, pinStates[index]);
+  sendJsonDocument(200, response);
 }
 
 void handleGpioConfigure() {
@@ -415,55 +459,28 @@ void handleGpioConfigure() {
     return;
   }
 
-  const char *mode = request[F("mode")] | "";
-  int initialValue = 0;
-  const bool hasInitialValue = !request[F("value")].isNull();
-  if (hasInitialValue && !parseValue(request[F("value")], initialValue)) {
-    return;
-  }
-
-  Serial.print(F("[api] GPIO configure pin "));
-  Serial.print(pin->pin);
-  Serial.print(F(" mode="));
-  Serial.println(mode);
-
-  if (!applyMode(*pin, pinStates[index], mode, hasInitialValue, initialValue)) {
-    return;
-  }
-
-  DynamicJsonDocument response(512);
-  response[F("ok")] = true;
-  JsonObject pinObject = response.createNestedObject(F("gpio"));
-  addPinState(pinObject, *pin, pinStates[index]);
-  sendJsonDocument(200, response);
+  performGpioConfigure(*pin, index, request);
 }
 
-void handleGpioDacWrite() {
-  DynamicJsonDocument request(kJsonDocumentBytes);
-  if (!parseJsonRequest(request)) {
-    return;
-  }
-
-  const PinDefinition *pin = nullptr;
-  size_t index = 0;
+void performGpioDacWrite(const PinDefinition &pin, size_t index,
+                         DynamicJsonDocument &request) {
   int value = 0;
-  if (!parsePin(request[F("pin")], pin, index) ||
-      !parseDacValue(request[F("value")], value)) {
+  if (!parseDacValue(request[F("value")], value)) {
     return;
   }
 
-  if (!pin->dac) {
+  if (!pin.dac) {
     sendJsonError(400, F("pin_not_dac_capable"));
     return;
   }
 
   Serial.print(F("[api] GPIO DAC write pin "));
-  Serial.print(pin->pin);
+  Serial.print(pin.pin);
   Serial.print(F(" value="));
   Serial.println(value);
 
 #if defined(ARDUINO_ARCH_ESP32)
-  dacWrite(pin->pin, static_cast<uint8_t>(value));
+  dacWrite(pin.pin, static_cast<uint8_t>(value));
 #else
   sendJsonError(400, F("dac_unsupported"), F("internal DAC is not supported by this platform"));
   return;
@@ -475,7 +492,62 @@ void handleGpioDacWrite() {
   DynamicJsonDocument response(768);
   response[F("ok")] = true;
   JsonObject dacObject = response.createNestedObject(F("dac"));
-  addDacResult(dacObject, *pin, state, value);
+  addDacResult(dacObject, pin, state, value);
+  sendJsonDocument(200, response);
+}
+
+void handleGpioDacWrite() {
+  DynamicJsonDocument request(kJsonDocumentBytes);
+  if (!parseJsonRequest(request)) {
+    return;
+  }
+
+  const PinDefinition *pin = nullptr;
+  size_t index = 0;
+  if (!parsePin(request[F("pin")], pin, index)) {
+    return;
+  }
+
+  performGpioDacWrite(*pin, index, request);
+}
+
+void performGpioWrite(const PinDefinition &pin, size_t index, DynamicJsonDocument &request) {
+  int value = 0;
+  if (!parseValue(request[F("value")], value)) {
+    return;
+  }
+
+  PinState &state = pinStates[index];
+  if (!pin.output) {
+    sendJsonError(400, F("pin_not_output_capable"));
+    return;
+  }
+
+  if (!state.configured) {
+    Serial.print(F("[api] GPIO auto-configure pin "));
+    Serial.print(pin.pin);
+    Serial.println(F(" as output for write"));
+    if (!applyMode(pin, state, "output", true, value)) {
+      return;
+    }
+  } else if (!state.outputMode) {
+    sendJsonError(400, F("pin_not_output_configured"),
+                  F("configure the pin as output before writing"));
+    return;
+  }
+
+  Serial.print(F("[api] GPIO write pin "));
+  Serial.print(pin.pin);
+  Serial.print(F(" value="));
+  Serial.println(value);
+
+  digitalWrite(pin.pin, value == 0 ? LOW : HIGH);
+  state.lastOutputValue = value;
+
+  DynamicJsonDocument response(512);
+  response[F("ok")] = true;
+  JsonObject pinObject = response.createNestedObject(F("gpio"));
+  addPinState(pinObject, pin, state);
   sendJsonDocument(200, response);
 }
 
@@ -487,44 +559,100 @@ void handleGpioWrite() {
 
   const PinDefinition *pin = nullptr;
   size_t index = 0;
-  int value = 0;
-  if (!parsePin(request[F("pin")], pin, index) ||
-      !parseValue(request[F("value")], value)) {
+  if (!parsePin(request[F("pin")], pin, index)) {
     return;
   }
 
-  PinState &state = pinStates[index];
-  if (!pin->output) {
-    sendJsonError(400, F("pin_not_output_capable"));
+  performGpioWrite(*pin, index, request);
+}
+
+bool requireHttpMethod(HTTPMethod expected) {
+  if (webServer->method() == expected) {
+    return true;
+  }
+
+  sendJsonError(405, F("method_not_allowed"));
+  return false;
+}
+
+void handlePathStyleGpioRoute() {
+  const String prefix = F("/api/gpio/pin/");
+  const String uri = webServer->uri();
+  if (!uri.startsWith(prefix)) {
+    sendJsonError(404, F("not_found"), uri);
     return;
   }
 
-  if (!state.configured) {
-    Serial.print(F("[api] GPIO auto-configure pin "));
-    Serial.print(pin->pin);
-    Serial.println(F(" as output for write"));
-    if (!applyMode(*pin, state, "output", true, value)) {
+  const String remainder = uri.substring(prefix.length());
+  const int separator = remainder.indexOf('/');
+  if (separator <= 0 || separator >= static_cast<int>(remainder.length()) - 1 ||
+      remainder.indexOf('/', separator + 1) >= 0) {
+    sendJsonError(400, F("invalid_gpio_path"),
+                  F("expected /api/gpio/pin/<pin>/<operation>"));
+    return;
+  }
+
+  const String pinSegment = remainder.substring(0, separator);
+  const String operation = remainder.substring(separator + 1);
+  const PinDefinition *pin = nullptr;
+  size_t index = 0;
+  if (!parsePinFromPath(pinSegment, pin, index)) {
+    return;
+  }
+
+  if (operation == F("read")) {
+    if (!requireHttpMethod(HTTP_GET)) {
       return;
     }
-  } else if (!state.outputMode) {
-    sendJsonError(400, F("pin_not_output_configured"),
-                  F("configure the pin as output before writing"));
+    performGpioRead(*pin, index);
     return;
   }
 
-  Serial.print(F("[api] GPIO write pin "));
-  Serial.print(pin->pin);
-  Serial.print(F(" value="));
-  Serial.println(value);
+  if (operation == F("adc")) {
+    if (!requireHttpMethod(HTTP_GET)) {
+      return;
+    }
+    performGpioAdcRead(*pin);
+    return;
+  }
 
-  digitalWrite(pin->pin, value == 0 ? LOW : HIGH);
-  state.lastOutputValue = value;
+  if (operation == F("configure")) {
+    if (!requireHttpMethod(HTTP_POST)) {
+      return;
+    }
+    DynamicJsonDocument request(kJsonDocumentBytes);
+    if (!parseJsonRequest(request)) {
+      return;
+    }
+    performGpioConfigure(*pin, index, request);
+    return;
+  }
 
-  DynamicJsonDocument response(512);
-  response[F("ok")] = true;
-  JsonObject pinObject = response.createNestedObject(F("gpio"));
-  addPinState(pinObject, *pin, state);
-  sendJsonDocument(200, response);
+  if (operation == F("write")) {
+    if (!requireHttpMethod(HTTP_POST)) {
+      return;
+    }
+    DynamicJsonDocument request(kJsonDocumentBytes);
+    if (!parseJsonRequest(request)) {
+      return;
+    }
+    performGpioWrite(*pin, index, request);
+    return;
+  }
+
+  if (operation == F("dac")) {
+    if (!requireHttpMethod(HTTP_POST)) {
+      return;
+    }
+    DynamicJsonDocument request(kJsonDocumentBytes);
+    if (!parseJsonRequest(request)) {
+      return;
+    }
+    performGpioDacWrite(*pin, index, request);
+    return;
+  }
+
+  sendJsonError(404, F("unknown_gpio_operation"), operation);
 }
 
 void configureRoutes() {
@@ -534,6 +662,7 @@ void configureRoutes() {
   webServer->on(F("/api/gpio/configure"), HTTP_POST, handleGpioConfigure);
   webServer->on(F("/api/gpio/write"), HTTP_POST, handleGpioWrite);
   webServer->on(F("/api/gpio/dac"), HTTP_POST, handleGpioDacWrite);
+  webServer->onNotFound(handlePathStyleGpioRoute);
 }
 
 void resetRuntimeState() {
