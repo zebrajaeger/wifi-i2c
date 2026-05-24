@@ -44,6 +44,26 @@ pio device monitor -b 115200
 
 The project currently uses `upload_speed = 1500000` and `monitor_speed = 115200` in `platformio.ini`.
 
+## Local OpenSpec And GitNexus Tooling
+
+The repository includes a root `package.json` only for local development tooling around OpenSpec and GitNexus. It is not part of the ESP32 firmware runtime.
+
+Install the local tools with:
+
+```powershell
+npm install
+```
+
+Useful scripts:
+
+```powershell
+npm run openspec
+npm run gn:analyze
+npm run gn:wiki
+```
+
+The `.git/hooks/pre-commit` hook runs `npm run gn:analyze` before each commit. If GitNexus analysis fails, the commit is aborted so the local code intelligence data stays current.
+
 ## Operating Modes
 
 ### WiFi Station And API Mode
