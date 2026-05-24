@@ -8,6 +8,10 @@
     "read": "node gpio.js read",
     "adc": "node gpio.js adc",
     "dac": "node gpio.js dac",
+    "pwm": "node gpio.js pwm",
+    "pwm-read": "node gpio.js pwm-read",
+    "pwm-stop": "node gpio.js pwm-stop",
+    "servo": "node gpio.js servo",
     "configure": "node gpio.js configure",
     "write": "node gpio.js write"
   },

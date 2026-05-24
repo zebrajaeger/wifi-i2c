@@ -10,7 +10,7 @@ Firmware for an ESP32-based WiFi-to-I2C controller. The controller joins a confi
 - Starts an I2C REST API after successful WiFi station connection.
 - Supports I2C scan, write, read, and write-then-read transactions.
 - Starts a GPIO REST API after successful WiFi station connection.
-- Supports listing safe GPIOs, configuring mode and pulls, reading digital inputs, writing digital outputs, reading ADC-capable inputs, and writing internal DAC outputs.
+- Supports listing safe GPIOs, configuring mode and pulls, reading digital inputs, writing digital outputs, reading ADC-capable inputs, writing internal DAC outputs, and driving hardware PWM outputs.
 
 ## Hardware And Firmware
 
@@ -171,11 +171,13 @@ Payload fields:
 
 The GPIO API is available only in WiFi station mode after a successful WiFi connection. Responses are JSON and include `ok: true` on success or `ok: false` with an `error` field on validation errors.
 
-GPIO access is intentionally limited to a safe allowlist. The API does not expose pins used for flash, boot strapping, UART, or the default I2C bus. Always call `GET /api/gpio` first and choose a pin listed as output-capable before driving external hardware, a pin listed as ADC-capable before reading ADC values, or a pin listed as DAC-capable before driving an internal DAC output.
+GPIO access is intentionally limited to a safe allowlist. The API does not expose pins used for flash, boot strapping, UART, or the default I2C bus. Always call `GET /api/gpio` first and choose a pin listed as output-capable before driving external hardware, a pin listed as ADC-capable before reading ADC values, a pin listed as DAC-capable before driving an internal DAC output, or a pin listed as PWM-capable before starting PWM output.
 
 ADC reads are exposed only for allowlisted ADC1-capable pins so they remain usable while WiFi is active. The returned values are raw ADC measurements and may need scaling, calibration, or filtering in your client code.
 
 Internal DAC writes are exposed only on ESP32 DAC-capable pins GPIO25 and GPIO26. Values are raw 8-bit DAC values from `0` through `255`; actual output voltage depends on board supply, load, and the ESP32 DAC characteristics.
+
+PWM uses ESP32 LEDC hardware PWM channels. Values are hardware-timed rather than software-toggled. Duty values are raw and depend on the selected `resolutionBits`.
 
 Supported modes:
 
@@ -192,6 +194,9 @@ Pin-specific operations can use resource-style routes:
 - `POST /api/gpio/pin/<pin>/configure`
 - `POST /api/gpio/pin/<pin>/write`
 - `POST /api/gpio/pin/<pin>/dac`
+- `GET /api/gpio/pin/<pin>/pwm`
+- `POST /api/gpio/pin/<pin>/pwm`
+- `POST /api/gpio/pin/<pin>/pwm/stop`
 
 The older operation endpoints such as `/api/gpio/read?pin=<pin>` and `/api/gpio/write` remain supported for compatibility.
 
@@ -219,12 +224,21 @@ Example response excerpt:
       "pulldownCapable": true,
       "adcCapable": false,
       "dacCapable": false,
+      "pwmCapable": true,
       "mode": "unconfigured",
       "pullup": false,
       "pulldown": false,
       "value": 0,
       "lastOutputValue": null,
-      "lastDacValue": null
+      "lastDacValue": null,
+      "pwm": {
+        "active": false,
+        "frequencyHz": null,
+        "resolutionBits": null,
+        "duty": null,
+        "maxDuty": null,
+        "channel": null
+      }
     }
   ],
   "count": 16
@@ -302,6 +316,76 @@ Payload fields:
 - `value`: raw DAC value, `0` through `255`
 
 Use `GET /api/gpio` first and choose a pin with `dacCapable: true`. For accurate or higher-resolution analog output, use an external DAC such as MCP4725.
+
+### Drive PWM Output
+
+Start or update hardware PWM on one supported PWM-capable GPIO:
+
+```powershell
+Invoke-RestMethod `
+  -Uri http://<controller-ip>/api/gpio/pin/13/pwm `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"frequencyHz":1000,"resolutionBits":10,"duty":512}'
+```
+
+Equivalent compatibility endpoint:
+
+```powershell
+Invoke-RestMethod `
+  -Uri http://<controller-ip>/api/gpio/pwm `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"pin":13,"frequencyHz":1000,"resolutionBits":10,"duty":512}'
+```
+
+Read the current REST-managed PWM state:
+
+```powershell
+Invoke-RestMethod -Uri "http://<controller-ip>/api/gpio/pin/13/pwm"
+```
+
+Stop PWM on the pin:
+
+```powershell
+Invoke-RestMethod `
+  -Uri http://<controller-ip>/api/gpio/pin/13/pwm/stop `
+  -Method Post
+```
+
+Example PWM response:
+
+```json
+{
+  "ok": true,
+  "pwm": {
+    "pin": 13,
+    "active": true,
+    "frequencyHz": 1000,
+    "resolutionBits": 10,
+    "duty": 512,
+    "maxDuty": 1023,
+    "channel": 0
+  }
+}
+```
+
+Payload fields:
+
+- `frequencyHz`: PWM frequency in hertz, `1` through `40000000`
+- `resolutionBits`: raw duty resolution, `1` through `16`
+- `duty`: raw duty value, `0` through `(2^resolutionBits)-1`
+
+Use `GET /api/gpio` first and choose a pin with `pwmCapable: true`. PWM can immediately drive attached hardware; use suitable resistors, drivers, or level shifting for external loads.
+
+Servo-style PWM can be generated with the GPIO example. A typical hobby servo uses 50 Hz and roughly `500` to `2500` microsecond pulses:
+
+```powershell
+cd examples/gpio
+npm run servo -- --host <controller-ip> --pin 13 --angle 90 --path-style
+```
+
+Power servos from a suitable external supply and connect the servo supply ground to the controller ground.
 
 ### Configure GPIO
 

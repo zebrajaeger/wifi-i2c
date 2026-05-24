@@ -7,6 +7,10 @@ function printUsage() {
   node gpio.js read --host <controller-ip> --pin <n>
   node gpio.js adc --host <controller-ip> --pin <n>
   node gpio.js dac --host <controller-ip> --pin <n> --value 0..255
+  node gpio.js pwm --host <controller-ip> --pin <n> --frequency <hz> --resolution <bits> --duty <raw>
+  node gpio.js pwm-read --host <controller-ip> --pin <n>
+  node gpio.js pwm-stop --host <controller-ip> --pin <n>
+  node gpio.js servo --host <controller-ip> --pin <n> (--angle 0..180 | --pulse-us <us>)
   node gpio.js configure --host <controller-ip> --pin <n> --mode <mode> [--value 0|1]
   node gpio.js write --host <controller-ip> --pin <n> --value 0|1
 
@@ -15,6 +19,13 @@ Options:
   --pin <n>      GPIO number from GET /api/gpio.
   --mode <mode>  input, input_pullup, input_pulldown, output, output_open_drain.
   --value <n>    Digital output value 0|1, or DAC value 0..255.
+  --frequency <hz> PWM frequency in hertz.
+  --resolution <n> PWM duty resolution bits.
+  --duty <n>     Raw PWM duty value from 0 to (2^resolution)-1.
+  --angle <n>    Servo angle 0..180, mapped to min/max pulse width.
+  --pulse-us <n> Servo pulse width in microseconds.
+  --min-pulse <n> Servo pulse for 0 degrees. Default: 500.
+  --max-pulse <n> Servo pulse for 180 degrees. Default: 2500.
   --path-style   Use /api/gpio/pin/<pin>/<operation> for pin-specific requests.
   --help         Show this help.
 
@@ -26,6 +37,10 @@ Examples:
   node gpio.js adc --host 192.168.178.51 --pin 34
   node gpio.js adc --host 192.168.178.51 --pin 34 --path-style
   node gpio.js dac --host 192.168.178.51 --pin 25 --value 128
+  node gpio.js pwm --host 192.168.178.51 --pin 13 --frequency 1000 --resolution 10 --duty 512
+  node gpio.js pwm-read --host 192.168.178.51 --pin 13 --path-style
+  node gpio.js pwm-stop --host 192.168.178.51 --pin 13
+  node gpio.js servo --host 192.168.178.51 --pin 13 --angle 90 --path-style
 `);
 }
 
@@ -36,6 +51,13 @@ function parseArgs(argv) {
     pin: undefined,
     mode: '',
     value: undefined,
+    frequency: undefined,
+    resolution: undefined,
+    duty: undefined,
+    angle: undefined,
+    pulseUs: undefined,
+    minPulse: 500,
+    maxPulse: 2500,
     pathStyle: false,
     help: false,
   };
@@ -68,6 +90,27 @@ function parseArgs(argv) {
         break;
       case '--value':
         options.value = Number(next());
+        break;
+      case '--frequency':
+        options.frequency = Number(next());
+        break;
+      case '--resolution':
+        options.resolution = Number(next());
+        break;
+      case '--duty':
+        options.duty = Number(next());
+        break;
+      case '--angle':
+        options.angle = Number(next());
+        break;
+      case '--pulse-us':
+        options.pulseUs = Number(next());
+        break;
+      case '--min-pulse':
+        options.minPulse = Number(next());
+        break;
+      case '--max-pulse':
+        options.maxPulse = Number(next());
         break;
       case '--path-style':
         options.pathStyle = true;
@@ -106,6 +149,60 @@ function requireDacValue(options) {
   if (!Number.isInteger(options.value) || options.value < 0 || options.value > 255) {
     throw new Error('Missing or invalid --value 0..255');
   }
+}
+
+function requirePwmOptions(options) {
+  if (!Number.isInteger(options.frequency) || options.frequency < 1) {
+    throw new Error('Missing or invalid --frequency <hz>');
+  }
+  if (!Number.isInteger(options.resolution) || options.resolution < 1 || options.resolution > 16) {
+    throw new Error('Missing or invalid --resolution 1..16');
+  }
+
+  const maxDuty = (2 ** options.resolution) - 1;
+  if (!Number.isInteger(options.duty) || options.duty < 0 || options.duty > maxDuty) {
+    throw new Error(`Missing or invalid --duty 0..${maxDuty}`);
+  }
+}
+
+function requireServoOptions(options) {
+  if (!Number.isInteger(options.minPulse) || options.minPulse < 1) {
+    throw new Error('Missing or invalid --min-pulse <us>');
+  }
+  if (!Number.isInteger(options.maxPulse) || options.maxPulse <= options.minPulse) {
+    throw new Error('Missing or invalid --max-pulse <us>');
+  }
+
+  const hasAngle = options.angle !== undefined;
+  const hasPulse = options.pulseUs !== undefined;
+  if (hasAngle === hasPulse) {
+    throw new Error('Use exactly one of --angle 0..180 or --pulse-us <us>');
+  }
+
+  if (hasAngle && (!Number.isFinite(options.angle) || options.angle < 0 || options.angle > 180)) {
+    throw new Error('Missing or invalid --angle 0..180');
+  }
+
+  if (hasPulse && (!Number.isInteger(options.pulseUs) ||
+      options.pulseUs < options.minPulse ||
+      options.pulseUs > options.maxPulse)) {
+    throw new Error(`Missing or invalid --pulse-us ${options.minPulse}..${options.maxPulse}`);
+  }
+}
+
+function servoPulseUs(options) {
+  if (options.pulseUs !== undefined) {
+    return options.pulseUs;
+  }
+
+  return Math.round(
+    options.minPulse + ((options.maxPulse - options.minPulse) * options.angle) / 180,
+  );
+}
+
+function dutyFromPulseUs(pulseUs, frequencyHz, resolutionBits) {
+  const maxDuty = (2 ** resolutionBits) - 1;
+  return Math.round((pulseUs * frequencyHz * maxDuty) / 1000000);
 }
 
 async function requestJson(host, path, options = {}) {
@@ -153,6 +250,8 @@ function printPins(response) {
     pulldown: pin.pulldownCapable,
     adc: pin.adcCapable,
     dac: pin.dacCapable,
+    pwm: pin.pwmCapable,
+    pwmActive: pin.pwm && pin.pwm.active,
     lastDac: pin.lastDacValue,
     label: pin.label,
   })));
@@ -208,6 +307,81 @@ async function main() {
         body,
       );
       console.log(JSON.stringify(response, null, 2));
+      return;
+    }
+    case 'pwm': {
+      requirePin(options);
+      requirePwmOptions(options);
+      const body = {
+        frequencyHz: options.frequency,
+        resolutionBits: options.resolution,
+        duty: options.duty,
+      };
+      if (!options.pathStyle) {
+        body.pin = options.pin;
+      }
+      const response = await postJson(
+        options.host,
+        gpioOperationPath(options, 'pwm', '/api/gpio/pwm'),
+        body,
+      );
+      console.log(JSON.stringify(response, null, 2));
+      return;
+    }
+    case 'pwm-read': {
+      requirePin(options);
+      const response = await requestJson(
+        options.host,
+        gpioOperationPath(options, 'pwm', `/api/gpio/pwm?pin=${options.pin}`),
+      );
+      console.log(JSON.stringify(response, null, 2));
+      return;
+    }
+    case 'pwm-stop': {
+      requirePin(options);
+      const body = {};
+      if (!options.pathStyle) {
+        body.pin = options.pin;
+      }
+      const response = await postJson(
+        options.host,
+        gpioOperationPath(options, 'pwm/stop', '/api/gpio/pwm/stop'),
+        body,
+      );
+      console.log(JSON.stringify(response, null, 2));
+      return;
+    }
+    case 'servo': {
+      requirePin(options);
+      requireServoOptions(options);
+      const frequencyHz = 50;
+      const resolutionBits = 16;
+      const pulseUs = servoPulseUs(options);
+      const duty = dutyFromPulseUs(pulseUs, frequencyHz, resolutionBits);
+      const body = {
+        frequencyHz,
+        resolutionBits,
+        duty,
+      };
+      if (!options.pathStyle) {
+        body.pin = options.pin;
+      }
+      const response = await postJson(
+        options.host,
+        gpioOperationPath(options, 'pwm', '/api/gpio/pwm'),
+        body,
+      );
+      console.log(JSON.stringify({
+        servo: {
+          pin: options.pin,
+          angle: options.angle ?? null,
+          pulseUs,
+          frequencyHz,
+          resolutionBits,
+          duty,
+        },
+        response,
+      }, null, 2));
       return;
     }
     case 'configure': {
