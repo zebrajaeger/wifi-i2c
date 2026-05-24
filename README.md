@@ -10,7 +10,7 @@ Firmware for an ESP32-based WiFi-to-I2C controller. The controller joins a confi
 - Starts an I2C REST API after successful WiFi station connection.
 - Supports I2C scan, write, read, and write-then-read transactions.
 - Starts a GPIO REST API after successful WiFi station connection.
-- Supports listing safe GPIOs, configuring mode and pulls, reading inputs, and writing outputs.
+- Supports listing safe GPIOs, configuring mode and pulls, reading digital inputs, writing digital outputs, and reading analog-capable inputs.
 
 ## Hardware And Firmware
 
@@ -151,7 +151,9 @@ Payload fields:
 
 The GPIO API is available only in WiFi station mode after a successful WiFi connection. Responses are JSON and include `ok: true` on success or `ok: false` with an `error` field on validation errors.
 
-GPIO access is intentionally limited to a safe allowlist. The API does not expose pins used for flash, boot strapping, UART, or the default I2C bus. Always call `GET /api/gpio` first and choose a pin listed as output-capable before driving external hardware.
+GPIO access is intentionally limited to a safe allowlist. The API does not expose pins used for flash, boot strapping, UART, or the default I2C bus. Always call `GET /api/gpio` first and choose a pin listed as output-capable before driving external hardware or a pin listed as analog-capable before reading analog values.
+
+Analog reads are exposed only for allowlisted ADC1-capable pins so they remain usable while WiFi is active. The returned values are raw ADC measurements and may need scaling, calibration, or filtering in your client code.
 
 Supported modes:
 
@@ -183,6 +185,7 @@ Example response excerpt:
       "outputCapable": true,
       "pullupCapable": true,
       "pulldownCapable": true,
+      "analogCapable": false,
       "mode": "unconfigured",
       "pullup": false,
       "pulldown": false,
@@ -203,6 +206,31 @@ Invoke-RestMethod -Uri "http://<controller-ip>/api/gpio/read?pin=13"
 ```
 
 If the pin has not been configured through REST yet, the controller automatically configures it as plain `input` without pull-up or pull-down before reading.
+
+### Read Analog GPIO
+
+Read one supported analog-capable GPIO:
+
+```powershell
+Invoke-RestMethod -Uri "http://<controller-ip>/api/gpio/analog?pin=34"
+```
+
+Example response:
+
+```json
+{
+  "ok": true,
+  "analog": {
+    "pin": 34,
+    "raw": 2048,
+    "resolutionBits": 12,
+    "maxRaw": 4095,
+    "millivolts": 1650
+  }
+}
+```
+
+The `millivolts` field is included when the firmware platform supports calibrated millivolt reads. Use `GET /api/gpio` first and choose a pin with `analogCapable: true`; non-analog pins are rejected before hardware access.
 
 ### Configure GPIO
 

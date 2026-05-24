@@ -6,6 +6,8 @@
 namespace GpioRestApi {
 namespace {
 constexpr size_t kJsonDocumentBytes = 1024;
+constexpr uint8_t kAnalogResolutionBits = 12;
+constexpr int kAnalogMaxRaw = (1 << kAnalogResolutionBits) - 1;
 
 struct PinDefinition {
   uint8_t pin;
@@ -13,6 +15,7 @@ struct PinDefinition {
   bool output;
   bool pullup;
   bool pulldown;
+  bool analog;
   const __FlashStringHelper *label;
 };
 
@@ -26,22 +29,22 @@ struct PinState {
 };
 
 constexpr PinDefinition kPins[] = {
-    {13, true, true, true, true, F("safe_gpio")},
-    {14, true, true, true, true, F("safe_gpio")},
-    {16, true, true, true, true, F("safe_gpio")},
-    {17, true, true, true, true, F("safe_gpio")},
-    {18, true, true, true, true, F("safe_gpio")},
-    {19, true, true, true, true, F("safe_gpio")},
-    {23, true, true, true, true, F("safe_gpio")},
-    {25, true, true, true, true, F("safe_gpio")},
-    {26, true, true, true, true, F("safe_gpio")},
-    {27, true, true, true, true, F("safe_gpio")},
-    {32, true, true, true, true, F("safe_gpio")},
-    {33, true, true, true, true, F("safe_gpio")},
-    {34, true, false, false, false, F("input_only")},
-    {35, true, false, false, false, F("input_only")},
-    {36, true, false, false, false, F("input_only")},
-    {39, true, false, false, false, F("input_only")},
+    {13, true, true, true, true, false, F("safe_gpio")},
+    {14, true, true, true, true, false, F("safe_gpio")},
+    {16, true, true, true, true, false, F("safe_gpio")},
+    {17, true, true, true, true, false, F("safe_gpio")},
+    {18, true, true, true, true, false, F("safe_gpio")},
+    {19, true, true, true, true, false, F("safe_gpio")},
+    {23, true, true, true, true, false, F("safe_gpio")},
+    {25, true, true, true, true, false, F("safe_gpio")},
+    {26, true, true, true, true, false, F("safe_gpio")},
+    {27, true, true, true, true, false, F("safe_gpio")},
+    {32, true, true, true, true, true, F("safe_gpio_adc1")},
+    {33, true, true, true, true, true, F("safe_gpio_adc1")},
+    {34, true, false, false, false, true, F("input_only_adc1")},
+    {35, true, false, false, false, true, F("input_only_adc1")},
+    {36, true, false, false, false, true, F("input_only_adc1")},
+    {39, true, false, false, false, true, F("input_only_adc1")},
 };
 
 PinState pinStates[sizeof(kPins) / sizeof(kPins[0])];
@@ -275,6 +278,7 @@ void addPinState(JsonObject target, const PinDefinition &pin, const PinState &st
   target[F("outputCapable")] = pin.output;
   target[F("pullupCapable")] = pin.pullup;
   target[F("pulldownCapable")] = pin.pulldown;
+  target[F("analogCapable")] = pin.analog;
   target[F("mode")] = state.configured ? state.mode : F("unconfigured");
   target[F("pullup")] = state.pullup;
   target[F("pulldown")] = state.pulldown;
@@ -284,6 +288,18 @@ void addPinState(JsonObject target, const PinDefinition &pin, const PinState &st
   } else {
     target[F("lastOutputValue")] = nullptr;
   }
+}
+
+void addAnalogReading(JsonObject target, const PinDefinition &pin) {
+  const int raw = analogRead(pin.pin);
+
+  target[F("pin")] = pin.pin;
+  target[F("raw")] = raw;
+  target[F("resolutionBits")] = kAnalogResolutionBits;
+  target[F("maxRaw")] = kAnalogMaxRaw;
+#if defined(ARDUINO_ARCH_ESP32)
+  target[F("millivolts")] = analogReadMilliVolts(pin.pin);
+#endif
 }
 
 void handleGpioList() {
@@ -328,6 +344,29 @@ void handleGpioRead() {
   response[F("ok")] = true;
   JsonObject pinObject = response.createNestedObject(F("gpio"));
   addPinState(pinObject, *pin, state);
+  sendJsonDocument(200, response);
+}
+
+void handleGpioAnalogRead() {
+  const PinDefinition *pin = nullptr;
+  size_t index = 0;
+  if (!parsePinFromQuery(pin, index)) {
+    return;
+  }
+  (void)index;
+
+  if (!pin->analog) {
+    sendJsonError(400, F("pin_not_analog_capable"));
+    return;
+  }
+
+  Serial.print(F("[api] GPIO analog read pin "));
+  Serial.println(pin->pin);
+
+  DynamicJsonDocument response(512);
+  response[F("ok")] = true;
+  JsonObject analogObject = response.createNestedObject(F("analog"));
+  addAnalogReading(analogObject, *pin);
   sendJsonDocument(200, response);
 }
 
@@ -417,6 +456,7 @@ void handleGpioWrite() {
 void configureRoutes() {
   webServer->on(F("/api/gpio"), HTTP_GET, handleGpioList);
   webServer->on(F("/api/gpio/read"), HTTP_GET, handleGpioRead);
+  webServer->on(F("/api/gpio/analog"), HTTP_GET, handleGpioAnalogRead);
   webServer->on(F("/api/gpio/configure"), HTTP_POST, handleGpioConfigure);
   webServer->on(F("/api/gpio/write"), HTTP_POST, handleGpioWrite);
 }
@@ -430,6 +470,9 @@ void resetRuntimeState() {
 
 void begin(WebServer &server) {
   webServer = &server;
+#if defined(ARDUINO_ARCH_ESP32)
+  analogReadResolution(kAnalogResolutionBits);
+#endif
   resetRuntimeState();
   configureRoutes();
 

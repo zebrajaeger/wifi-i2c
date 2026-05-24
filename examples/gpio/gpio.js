@@ -5,6 +5,7 @@ function printUsage() {
   console.log(`Usage:
   node gpio.js list --host <controller-ip>
   node gpio.js read --host <controller-ip> --pin <n>
+  node gpio.js analog --host <controller-ip> --pin <n>
   node gpio.js configure --host <controller-ip> --pin <n> --mode <mode> [--value 0|1]
   node gpio.js write --host <controller-ip> --pin <n> --value 0|1
 
@@ -20,6 +21,7 @@ Examples:
   node gpio.js configure --host 192.168.178.51 --pin 13 --mode output --value 0
   node gpio.js write --host 192.168.178.51 --pin 13 --value 1
   node gpio.js read --host 192.168.178.51 --pin 13
+  node gpio.js analog --host 192.168.178.51 --pin 34
 `);
 }
 
@@ -32,6 +34,12 @@ function parseArgs(argv) {
     value: undefined,
     help: false,
   };
+
+  if (options.command === '--help' || options.command === '-h') {
+    options.command = '';
+    options.help = true;
+    return options;
+  }
 
   for (let i = 1; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -121,6 +129,7 @@ function printPins(response) {
     output: pin.outputCapable,
     pullup: pin.pullupCapable,
     pulldown: pin.pulldownCapable,
+    analog: pin.analogCapable,
     label: pin.label,
   })));
   console.log(JSON.stringify(response, null, 2));
@@ -145,6 +154,12 @@ async function main() {
     case 'read': {
       requirePin(options);
       const response = await requestJson(options.host, `/api/gpio/read?pin=${options.pin}`);
+      console.log(JSON.stringify(response, null, 2));
+      return;
+    }
+    case 'analog': {
+      requirePin(options);
+      const response = await requestJson(options.host, `/api/gpio/analog?pin=${options.pin}`);
       console.log(JSON.stringify(response, null, 2));
       return;
     }

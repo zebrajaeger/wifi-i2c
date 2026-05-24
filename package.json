@@ -1,0 +1,31 @@
+{
+  "name": "wifi-i2c",
+  "version": "1.0.0",
+  "description": "Firmware for an ESP32-based WiFi-to-I2C controller. The controller joins a configured WiFi network and exposes I2C master operations and selected GPIOs through a small HTTP REST API. If WiFi credentials are missing or unreachable, it starts a provisioning access point with a captive portal.",
+  "main": "index.js",
+  "directories": {
+    "example": "examples"
+  },
+  "scripts": {
+    "gitnexus": "gitnexus",
+    "gn:analyze": "gitnexus analyze",
+    "gn:wiki": "gitnexus wiki",
+    "openspec": "openspec"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zebrajaeger/wifi-i2c.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/zebrajaeger/wifi-i2c/issues"
+  },
+  "homepage": "https://github.com/zebrajaeger/wifi-i2c#readme",
+  "dependencies": {
+    "@fission-ai/openspec": "^1.3.1",
+    "gitnexus": "^1.6.5"
+  }
+}
