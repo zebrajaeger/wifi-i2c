@@ -1,7 +1,7 @@
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **wifi-i2c** (1068 symbols, 1491 relationships, 51 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **wifi-i2c** (1069 symbols, 1492 relationships, 51 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
@@ -47,5 +47,5 @@ This project is indexed by GitNexus as **wifi-i2c** (1068 symbols, 1491 relation
 Before making any code changes, run:
 
 ```bash
-npx gitnexus analyze
+npm gn:analyze
 ````

@@ -8,9 +8,11 @@
   },
   "scripts": {
     "gitnexus": "gitnexus",
+    "gn": "gitnexus",
     "gn:analyze": "gitnexus analyze",
     "gn:wiki": "gitnexus wiki",
-    "openspec": "openspec"
+    "openspec": "openspec",
+    "os": "openspec"
   },
   "repository": {
     "type": "git",
