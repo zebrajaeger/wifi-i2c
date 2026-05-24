@@ -5,7 +5,8 @@ function printUsage() {
   console.log(`Usage:
   node gpio.js list --host <controller-ip>
   node gpio.js read --host <controller-ip> --pin <n>
-  node gpio.js analog --host <controller-ip> --pin <n>
+  node gpio.js adc --host <controller-ip> --pin <n>
+  node gpio.js dac --host <controller-ip> --pin <n> --value 0..255
   node gpio.js configure --host <controller-ip> --pin <n> --mode <mode> [--value 0|1]
   node gpio.js write --host <controller-ip> --pin <n> --value 0|1
 
@@ -13,7 +14,7 @@ Options:
   --host <ip>    Controller IP or hostname. Can also use CONTROLLER_IP.
   --pin <n>      GPIO number from GET /api/gpio.
   --mode <mode>  input, input_pullup, input_pulldown, output, output_open_drain.
-  --value <0|1>  Digital output value.
+  --value <n>    Digital output value 0|1, or DAC value 0..255.
   --help         Show this help.
 
 Examples:
@@ -21,7 +22,8 @@ Examples:
   node gpio.js configure --host 192.168.178.51 --pin 13 --mode output --value 0
   node gpio.js write --host 192.168.178.51 --pin 13 --value 1
   node gpio.js read --host 192.168.178.51 --pin 13
-  node gpio.js analog --host 192.168.178.51 --pin 34
+  node gpio.js adc --host 192.168.178.51 --pin 34
+  node gpio.js dac --host 192.168.178.51 --pin 25 --value 128
 `);
 }
 
@@ -94,6 +96,12 @@ function requireValue(options) {
   }
 }
 
+function requireDacValue(options) {
+  if (!Number.isInteger(options.value) || options.value < 0 || options.value > 255) {
+    throw new Error('Missing or invalid --value 0..255');
+  }
+}
+
 async function requestJson(host, path, options = {}) {
   const response = await fetch(`http://${host}${path}`, options);
   const body = await response.json();
@@ -129,7 +137,9 @@ function printPins(response) {
     output: pin.outputCapable,
     pullup: pin.pullupCapable,
     pulldown: pin.pulldownCapable,
-    analog: pin.analogCapable,
+    adc: pin.adcCapable,
+    dac: pin.dacCapable,
+    lastDac: pin.lastDacValue,
     label: pin.label,
   })));
   console.log(JSON.stringify(response, null, 2));
@@ -157,9 +167,19 @@ async function main() {
       console.log(JSON.stringify(response, null, 2));
       return;
     }
-    case 'analog': {
+    case 'adc': {
       requirePin(options);
-      const response = await requestJson(options.host, `/api/gpio/analog?pin=${options.pin}`);
+      const response = await requestJson(options.host, `/api/gpio/adc?pin=${options.pin}`);
+      console.log(JSON.stringify(response, null, 2));
+      return;
+    }
+    case 'dac': {
+      requirePin(options);
+      requireDacValue(options);
+      const response = await postJson(options.host, '/api/gpio/dac', {
+        pin: options.pin,
+        value: options.value,
+      });
       console.log(JSON.stringify(response, null, 2));
       return;
     }

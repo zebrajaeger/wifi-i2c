@@ -1,6 +1,6 @@
 ## Why
 
-The ESP32 controller has two internal DAC outputs on GPIO25 and GPIO26, but the current GPIO REST API only exposes digital output and analog input behavior. Exposing DAC writes through the GPIO block makes simple analog output tests possible without requiring an external MCP4725.
+The ESP32 controller has two internal DAC outputs on GPIO25 and GPIO26, but the current GPIO REST API only exposes digital output and ADC input behavior. Exposing DAC writes through the GPIO block makes simple analog output tests possible without requiring an external MCP4725.
 
 ## What Changes
 

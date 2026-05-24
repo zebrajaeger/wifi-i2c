@@ -6,7 +6,8 @@
   "scripts": {
     "list": "node gpio.js list",
     "read": "node gpio.js read",
-    "analog": "node gpio.js analog",
+    "adc": "node gpio.js adc",
+    "dac": "node gpio.js dac",
     "configure": "node gpio.js configure",
     "write": "node gpio.js write"
   },

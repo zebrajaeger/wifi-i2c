@@ -1,6 +1,6 @@
 ## Context
 
-The GPIO REST API already owns selected controller GPIO behavior, including digital reads/writes and analog reads. The current ESP32 target also provides two internal 8-bit DAC channels on GPIO25 and GPIO26. Those pins are already part of the GPIO allowlist, so DAC support should extend the existing GPIO block rather than becoming a separate I2C-style device API.
+The GPIO REST API already owns selected controller GPIO behavior, including digital reads/writes and ADC reads. The current ESP32 target also provides two internal 8-bit DAC channels on GPIO25 and GPIO26. Those pins are already part of the GPIO allowlist, so DAC support should extend the existing GPIO block rather than becoming a separate I2C-style device API.
 
 The DAC feature is intended for simple analog output tests and quick hardware-in-the-loop stimulus generation. It is not a replacement for higher-resolution external DAC devices such as MCP4725.
 
@@ -18,7 +18,7 @@ The DAC feature is intended for simple analog output tests and quick hardware-in
 
 - Add waveform generation, timed output, PWM, calibration, or voltage target conversion.
 - Add DAC support for non-ESP32 boards that do not expose `dacWrite`.
-- Change existing digital write, analog read, I2C, or WiFi provisioning behavior.
+- Change existing digital write, ADC read, I2C, or WiFi provisioning behavior.
 - Guarantee precision beyond the ESP32 internal DAC's coarse 8-bit output.
 
 ## Decisions
@@ -45,7 +45,7 @@ The DAC feature is intended for simple analog output tests and quick hardware-in
 
 5. Extend the existing GPIO example.
 
-   The existing GPIO example already covers list, configure, digital read/write, and analog read. Adding a `dac` command keeps all GPIO-facing REST examples together.
+   The existing GPIO example already covers list, configure, digital read/write, and ADC read. Adding a `dac` command keeps all GPIO-facing REST examples together.
 
 ## Risks / Trade-offs
 

@@ -18,11 +18,11 @@ The controller SHALL provide an endpoint that writes an 8-bit value to a support
 ## MODIFIED Requirements
 
 ### Requirement: API lists supported GPIO pins
-The controller SHALL provide an endpoint that lists GPIO pins available for REST control together with each pin's current parameters and capabilities, including whether the pin supports analog reads or internal DAC writes.
+The controller SHALL provide an endpoint that lists GPIO pins available for REST control together with each pin's current parameters and capabilities, including whether the pin supports ADC reads or internal DAC writes.
 
 #### Scenario: Client lists GPIO pins
 - **WHEN** a client sends `GET /api/gpio`
-- **THEN** the controller returns a JSON response containing supported GPIO entries with pin number, current mode, pull-up state, pull-down state, value, input/output capabilities, analog capability, DAC capability, and last DAC value when available
+- **THEN** the controller returns a JSON response containing supported GPIO entries with pin number, current mode, pull-up state, pull-down state, value, input/output capabilities, ADC capability, DAC capability, and last DAC value when available
 
 #### Scenario: Reserved pins are excluded or marked unavailable
 - **WHEN** the controller returns the GPIO list
@@ -40,11 +40,11 @@ The repository README SHALL document the GPIO REST API endpoints, payloads, resp
 
 #### Scenario: User reads project documentation
 - **WHEN** a user opens `README.md`
-- **THEN** the documentation explains how to list GPIOs, configure mode and pulls, read a digital GPIO, write an output, read an analog GPIO, write an internal DAC output, and avoid unsafe pins
+- **THEN** the documentation explains how to list GPIOs, configure mode and pulls, read a digital GPIO, write an output, read an ADC GPIO, write an internal DAC output, and avoid unsafe pins
 
 ### Requirement: GPIO example is provided
 The repository SHALL include a runnable GPIO REST example under `examples/gpio/`.
 
 #### Scenario: User tries GPIO REST from Node.js
 - **WHEN** a user opens the GPIO example directory
-- **THEN** the example provides a Node.js script, package scripts, and documentation for listing, configuring, digitally reading, writing, analog-reading, and DAC-writing GPIO pins through the REST API
+- **THEN** the example provides a Node.js script, package scripts, and documentation for listing, configuring, digitally reading, writing, ADC-reading, and DAC-writing GPIO pins through the REST API

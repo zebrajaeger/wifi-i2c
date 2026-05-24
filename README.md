@@ -10,7 +10,7 @@ Firmware for an ESP32-based WiFi-to-I2C controller. The controller joins a confi
 - Starts an I2C REST API after successful WiFi station connection.
 - Supports I2C scan, write, read, and write-then-read transactions.
 - Starts a GPIO REST API after successful WiFi station connection.
-- Supports listing safe GPIOs, configuring mode and pulls, reading digital inputs, writing digital outputs, and reading analog-capable inputs.
+- Supports listing safe GPIOs, configuring mode and pulls, reading digital inputs, writing digital outputs, reading ADC-capable inputs, and writing internal DAC outputs.
 
 ## Hardware And Firmware
 
@@ -171,9 +171,11 @@ Payload fields:
 
 The GPIO API is available only in WiFi station mode after a successful WiFi connection. Responses are JSON and include `ok: true` on success or `ok: false` with an `error` field on validation errors.
 
-GPIO access is intentionally limited to a safe allowlist. The API does not expose pins used for flash, boot strapping, UART, or the default I2C bus. Always call `GET /api/gpio` first and choose a pin listed as output-capable before driving external hardware or a pin listed as analog-capable before reading analog values.
+GPIO access is intentionally limited to a safe allowlist. The API does not expose pins used for flash, boot strapping, UART, or the default I2C bus. Always call `GET /api/gpio` first and choose a pin listed as output-capable before driving external hardware, a pin listed as ADC-capable before reading ADC values, or a pin listed as DAC-capable before driving an internal DAC output.
 
-Analog reads are exposed only for allowlisted ADC1-capable pins so they remain usable while WiFi is active. The returned values are raw ADC measurements and may need scaling, calibration, or filtering in your client code.
+ADC reads are exposed only for allowlisted ADC1-capable pins so they remain usable while WiFi is active. The returned values are raw ADC measurements and may need scaling, calibration, or filtering in your client code.
+
+Internal DAC writes are exposed only on ESP32 DAC-capable pins GPIO25 and GPIO26. Values are raw 8-bit DAC values from `0` through `255`; actual output voltage depends on board supply, load, and the ESP32 DAC characteristics.
 
 Supported modes:
 
@@ -205,12 +207,14 @@ Example response excerpt:
       "outputCapable": true,
       "pullupCapable": true,
       "pulldownCapable": true,
-      "analogCapable": false,
+      "adcCapable": false,
+      "dacCapable": false,
       "mode": "unconfigured",
       "pullup": false,
       "pulldown": false,
       "value": 0,
-      "lastOutputValue": null
+      "lastOutputValue": null,
+      "lastDacValue": null
     }
   ],
   "count": 16
@@ -227,12 +231,12 @@ Invoke-RestMethod -Uri "http://<controller-ip>/api/gpio/read?pin=13"
 
 If the pin has not been configured through REST yet, the controller automatically configures it as plain `input` without pull-up or pull-down before reading.
 
-### Read Analog GPIO
+### Read ADC GPIO
 
-Read one supported analog-capable GPIO:
+Read one supported ADC-capable GPIO:
 
 ```powershell
-Invoke-RestMethod -Uri "http://<controller-ip>/api/gpio/analog?pin=34"
+Invoke-RestMethod -Uri "http://<controller-ip>/api/gpio/adc?pin=34"
 ```
 
 Example response:
@@ -240,7 +244,7 @@ Example response:
 ```json
 {
   "ok": true,
-  "analog": {
+  "adc": {
     "pin": 34,
     "raw": 2048,
     "resolutionBits": 12,
@@ -250,7 +254,45 @@ Example response:
 }
 ```
 
-The `millivolts` field is included when the firmware platform supports calibrated millivolt reads. Use `GET /api/gpio` first and choose a pin with `analogCapable: true`; non-analog pins are rejected before hardware access.
+The `millivolts` field is included when the firmware platform supports calibrated millivolt reads. Use `GET /api/gpio` first and choose a pin with `adcCapable: true`; non-ADC pins are rejected before hardware access.
+
+### Write Internal DAC
+
+Write an 8-bit raw value to one supported DAC-capable GPIO:
+
+```powershell
+Invoke-RestMethod `
+  -Uri http://<controller-ip>/api/gpio/dac `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"pin":25,"value":128}'
+```
+
+Example response:
+
+```json
+{
+  "ok": true,
+  "dac": {
+    "pin": 25,
+    "value": 128,
+    "resolutionBits": 8,
+    "maxRaw": 255,
+    "gpio": {
+      "pin": 25,
+      "dacCapable": true,
+      "lastDacValue": 128
+    }
+  }
+}
+```
+
+Payload fields:
+
+- `pin`: GPIO number from `GET /api/gpio`, typically `25` or `26` on ESP32
+- `value`: raw DAC value, `0` through `255`
+
+Use `GET /api/gpio` first and choose a pin with `dacCapable: true`. For accurate or higher-resolution analog output, use an external DAC such as MCP4725.
 
 ### Configure GPIO
 
